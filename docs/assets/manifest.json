@@ -1,0 +1,373 @@
+[
+  {
+    "name": "01-client-login",
+    "title": "客户端：密码登录",
+    "file": "01-client-login.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "01b-client-login-code",
+    "title": "客户端：验证码登录（代表手机号或邮箱）",
+    "file": "01b-client-login-code.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "02-client-register",
+    "title": "客户端：注册",
+    "file": "02-client-register.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "03-client-forgot",
+    "title": "客户端：忘记密码（代表手机号或邮箱）",
+    "file": "03-client-forgot.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "04-client-home",
+    "title": "客户端：首页（用户菜单展开）",
+    "file": "04-client-home.png",
+    "width": 1600,
+    "height": 1225
+  },
+  {
+    "name": "05-client-course-overview",
+    "title": "客户端：课程总览",
+    "file": "05-client-course-overview.png",
+    "width": 1600,
+    "height": 920
+  },
+  {
+    "name": "05b-client-course-join",
+    "title": "客户端：课程总览（加入班级）",
+    "file": "05b-client-course-join.png",
+    "width": 1600,
+    "height": 920
+  },
+  {
+    "name": "06-client-course-content",
+    "title": "客户端：课程详情（学习内容）",
+    "file": "06-client-course-content.png",
+    "width": 1600,
+    "height": 1097
+  },
+  {
+    "name": "07-client-course-homework",
+    "title": "客户端：在线作业（单选题）",
+    "file": "07-client-course-homework.png",
+    "width": 1600,
+    "height": 1214
+  },
+  {
+    "name": "07-client-course-homework-multiple",
+    "title": "客户端：在线作业（多选题）",
+    "file": "07-client-course-homework-multiple.png",
+    "width": 1600,
+    "height": 1214
+  },
+  {
+    "name": "07-client-course-homework-judgment",
+    "title": "客户端：在线作业（判断题）",
+    "file": "07-client-course-homework-judgment.png",
+    "width": 1600,
+    "height": 1214
+  },
+  {
+    "name": "07-client-course-homework-fill",
+    "title": "客户端：在线作业（填空题）",
+    "file": "07-client-course-homework-fill.png",
+    "width": 1600,
+    "height": 1214
+  },
+  {
+    "name": "07-client-course-homework-short",
+    "title": "客户端：在线作业（简答题）",
+    "file": "07-client-course-homework-short.png",
+    "width": 1600,
+    "height": 1214
+  },
+  {
+    "name": "07-client-course-homework-practice",
+    "title": "客户端：在线作业（实践题）",
+    "file": "07-client-course-homework-practice.png",
+    "width": 1600,
+    "height": 1285
+  },
+  {
+    "name": "07b-client-course-homework-submit",
+    "title": "客户端：在线作业（提交确认）",
+    "file": "07b-client-course-homework-submit.png",
+    "width": 1600,
+    "height": 1285
+  },
+  {
+    "name": "08-client-course-score",
+    "title": "客户端：课程详情（课程成绩）",
+    "file": "08-client-course-score.png",
+    "width": 1600,
+    "height": 1011
+  },
+  {
+    "name": "08b-client-course-score-complete",
+    "title": "客户端：课程详情（课程成绩·已完成）",
+    "file": "08b-client-course-score-complete.png",
+    "width": 1600,
+    "height": 1011
+  },
+  {
+    "name": "09-client-resource-overview",
+    "title": "客户端：资源总览",
+    "file": "09-client-resource-overview.png",
+    "width": 1600,
+    "height": 1068
+  },
+  {
+    "name": "10-client-resource-detail",
+    "title": "客户端：资源详情",
+    "file": "10-client-resource-detail.png",
+    "width": 1600,
+    "height": 1120
+  },
+  {
+    "name": "11-client-profile",
+    "title": "客户端：个人中心",
+    "file": "11-client-profile.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "11b-client-profile-realname",
+    "title": "客户端：个人中心（实名认证）",
+    "file": "11b-client-profile-realname.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "11d-client-profile-phone-edit",
+    "title": "客户端：联系方式维护（验证当前账号）",
+    "file": "11d-client-profile-phone-edit.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "11d2-client-profile-phone-edit-new",
+    "title": "客户端：联系方式维护（绑定新联系方式）",
+    "file": "11d2-client-profile-phone-edit-new.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "11g-client-profile-password-edit",
+    "title": "客户端：个人中心（修改密码）",
+    "file": "11g-client-profile-password-edit.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "14-admin-users",
+    "title": "管理端：用户列表",
+    "file": "14-admin-users.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "14b-admin-users-filter",
+    "title": "管理端：用户列表（筛选条件）",
+    "file": "14b-admin-users-filter.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "14c-admin-users-columns",
+    "title": "管理端：用户列表（字段设置）",
+    "file": "14c-admin-users-columns.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "15-admin-roles",
+    "title": "管理端：角色与权限",
+    "file": "15-admin-roles.png",
+    "width": 1600,
+    "height": 1869
+  },
+  {
+    "name": "16-admin-courses",
+    "title": "管理端：课程模板",
+    "file": "16-admin-courses.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "17-admin-course-edit",
+    "title": "管理端：课程模板编辑（本节内容）",
+    "file": "17-admin-course-edit.png",
+    "width": 1600,
+    "height": 1180
+  },
+  {
+    "name": "17b-admin-course-edit-homework",
+    "title": "管理端：课程模板编辑（作业配置）",
+    "file": "17b-admin-course-edit-homework.png",
+    "width": 1600,
+    "height": 966
+  },
+  {
+    "name": "17c-admin-course-question-create",
+    "title": "管理端：课程模板编辑（新增题目）",
+    "file": "17c-admin-course-question-create.png",
+    "width": 1600,
+    "height": 1210
+  },
+  {
+    "name": "17e-admin-course-question-single",
+    "title": "管理端：课程模板编辑（单选题配置）",
+    "file": "17e-admin-course-question-single.png",
+    "width": 1600,
+    "height": 1077
+  },
+  {
+    "name": "17f-admin-course-question-multiple",
+    "title": "管理端：课程模板编辑（多选题配置）",
+    "file": "17f-admin-course-question-multiple.png",
+    "width": 1600,
+    "height": 1077
+  },
+  {
+    "name": "17g-admin-course-question-judgment",
+    "title": "管理端：课程模板编辑（判断题配置）",
+    "file": "17g-admin-course-question-judgment.png",
+    "width": 1600,
+    "height": 963
+  },
+  {
+    "name": "17h-admin-course-question-fill",
+    "title": "管理端：课程模板编辑（填空题配置）",
+    "file": "17h-admin-course-question-fill.png",
+    "width": 1600,
+    "height": 992
+  },
+  {
+    "name": "17i-admin-course-question-short",
+    "title": "管理端：课程模板编辑（简答题配置）",
+    "file": "17i-admin-course-question-short.png",
+    "width": 1600,
+    "height": 1046
+  },
+  {
+    "name": "17d-admin-course-question-edit",
+    "title": "管理端：课程模板编辑（实践题配置）",
+    "file": "17d-admin-course-question-edit.png",
+    "width": 1600,
+    "height": 1210
+  },
+  {
+    "name": "18-admin-resources",
+    "title": "管理端：数据资源",
+    "file": "18-admin-resources.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "19-admin-resource-edit",
+    "title": "管理端：资源编辑",
+    "file": "19-admin-resource-edit.png",
+    "width": 1600,
+    "height": 1532
+  },
+  {
+    "name": "20-admin-classes",
+    "title": "管理端：班级管理",
+    "file": "20-admin-classes.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "21-admin-class-create",
+    "title": "管理端：班级管理（新增班级）",
+    "file": "21-admin-class-create.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "23-admin-class-members",
+    "title": "管理端：班级详情（成员列表）",
+    "file": "23-admin-class-members.png",
+    "width": 1600,
+    "height": 919
+  },
+  {
+    "name": "23b-admin-class-code",
+    "title": "管理端：班级详情（班级码已生成）",
+    "file": "23b-admin-class-code.png",
+    "width": 1600,
+    "height": 930
+  },
+  {
+    "name": "25-admin-class-course-edit",
+    "title": "管理端：班级详情（课程编辑·本节内容）",
+    "file": "25-admin-class-course-edit.png",
+    "width": 1600,
+    "height": 1377
+  },
+  {
+    "name": "25b-admin-class-course-edit-homework",
+    "title": "管理端：班级详情（课程编辑·作业配置）",
+    "file": "25b-admin-class-course-edit-homework.png",
+    "width": 1600,
+    "height": 1163
+  },
+  {
+    "name": "25c-admin-class-course-reimport",
+    "title": "管理端：班级详情（重新导入确认）",
+    "file": "25c-admin-class-course-reimport.png",
+    "width": 1600,
+    "height": 1377
+  },
+  {
+    "name": "26-admin-class-grading-list",
+    "title": "管理端：班级详情（作业批改列表）",
+    "file": "26-admin-class-grading-list.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "27-admin-class-grading-detail",
+    "title": "管理端：班级详情（作业批改详情）",
+    "file": "27-admin-class-grading-detail.png",
+    "width": 1600,
+    "height": 956
+  },
+  {
+    "name": "27b-admin-class-grading-return",
+    "title": "管理端：班级详情（打回重做确认）",
+    "file": "27b-admin-class-grading-return.png",
+    "width": 1600,
+    "height": 956
+  },
+  {
+    "name": "28-admin-class-scores",
+    "title": "管理端：班级详情（成绩管理）",
+    "file": "28-admin-class-scores.png",
+    "width": 1600,
+    "height": 900
+  },
+  {
+    "name": "28b-admin-class-score-detail",
+    "title": "管理端：班级详情（成绩明细）",
+    "file": "28b-admin-class-score-detail.png",
+    "width": 1600,
+    "height": 934
+  },
+  {
+    "name": "29-admin-platform",
+    "title": "管理端：平台设置",
+    "file": "29-admin-platform.png",
+    "width": 1600,
+    "height": 900
+  }
+]

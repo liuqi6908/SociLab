@@ -26,7 +26,3 @@ export function isPlainRecord(value: unknown): value is UnknownRecord {
 
   return prototype === Object.prototype || prototype === null
 }
-
-/** -------------------- Promise 工具 -------------------- */
-/** 同步或异步返回值 */
-export type Promisable<T> = T | Promise<T>

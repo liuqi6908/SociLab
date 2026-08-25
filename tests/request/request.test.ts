@@ -54,4 +54,21 @@ describe('create request', () => {
       message: 'upstream unavailable',
     } satisfies Partial<HttpError>)
   })
+
+  it('uses an HTTP status fallback for empty, empty-object, and malformed error bodies', async () => {
+    const bodies = ['', '{}', '{invalid']
+
+    for (const body of bodies) {
+      const request = createRequest({
+        baseUrl: 'https://api.example.test',
+        fetch: () => Promise.resolve(new Response(body, { status: 502 })),
+      })
+
+      await expect(request.fetch('/health')).rejects.toMatchObject({
+        name: 'HttpError',
+        status: 502,
+        message: 'HTTP 502',
+      } satisfies Partial<HttpError>)
+    }
+  })
 })

@@ -158,6 +158,9 @@ importers:
       '@socilab/request':
         specifier: workspace:*
         version: link:../request
+      '@socilab/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/shared: {}
 

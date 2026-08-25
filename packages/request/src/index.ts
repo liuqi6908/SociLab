@@ -115,6 +115,7 @@ async function toHttpError(response: Response) {
   const text = await response.text()
   const body = jsonParse(text)
   const record = isPlainRecord(body) ? body : undefined
+  const fallbackMessage = `HTTP ${response.status}`
   const issues = Array.isArray(record?.issues)
     ? record.issues.filter(isHttpErrorIssue)
     : undefined
@@ -125,11 +126,18 @@ async function toHttpError(response: Response) {
       ? record.message
       : typeof record?.error === 'string'
         ? record.error
-        : text || response.statusText,
+        : record || looksLikeJson(text)
+          ? fallbackMessage
+          : text || response.statusText || fallbackMessage,
     code: typeof record?.code === 'string' ? record.code : undefined,
     details: isPlainRecord(record?.details) ? record.details : undefined,
     issues,
   })
+}
+
+/** 判断错误体是否意图为 JSON，解析失败时不将语法碎片泄露为错误消息 */
+function looksLikeJson(value: string) {
+  return /^[{[]/.test(value.trimStart())
 }
 
 /** 确认错误数组成员可以作为公共输入问题暴露 */

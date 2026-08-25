@@ -56,13 +56,17 @@ pnpm install
 cp projects/server/.env.example projects/server/.env
 ```
 
-服务端环境变量如下：
+服务端环境变量如下。程序回退值指环境变量完全未配置时的行为；复制
+`projects/server/.env.example` 后，会加载该文件的启动命令使用示例配置值：
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `SERVER_HOST` | `127.0.0.1` | HTTP 监听地址 |
-| `SERVER_PORT` | `4317` | HTTP 监听端口，无效值会回退到默认端口 |
-| `CORS_ORIGINS` | 空 | 允许访问 API 的 Origin，多个值使用逗号分隔 |
+| 变量 | 程序回退值 | `.env.example` 值 | 说明 |
+| --- | --- | --- | --- |
+| `SERVER_HOST` | `127.0.0.1` | `127.0.0.1` | HTTP 监听地址 |
+| `SERVER_PORT` | `4317` | `4317` | HTTP 监听端口，无效值会回退到 `4317` |
+| `CORS_ORIGINS` | 空 | `http://localhost:3000` | 允许访问 API 的 Origin，多个值使用逗号分隔 |
+
+`pnpm dev` 和 `pnpm dev:server` 直接读取当前终端已经设置的环境变量，不会自动加载
+`projects/server/.env`；`pnpm start` 在完成构建后从 `projects/server/.env` 读取配置。
 
 客户端和管理端可分别在 `projects/client/.env.local` 与 `projects/admin/.env.local`
 设置 `VITE_API_BASE_URL`。本地环境文件已被 Git 忽略，不要提交真实密钥或个人配置。

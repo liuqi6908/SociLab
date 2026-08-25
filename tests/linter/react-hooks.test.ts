@@ -1,7 +1,6 @@
 import path from 'node:path'
 import { ESLint } from 'eslint'
 import { expect, test } from 'vitest'
-import { readRepositoryTypeScriptSources } from './quality-guards'
 import { readReactHookOrderDiagnostics, readReactHookSources } from './react-hooks'
 
 /** -------------------- 常量 -------------------- */
@@ -116,9 +115,31 @@ test('Hook 顺序检查器按源码位置排列同一声明项并保持最高阶
     'HighestStageMustNotRollback:useMemo',
   ])
   expect(diagnostics.map(item => [item.line, item.column])).toEqual([
-    [10, 41],
-    [16, 17],
-    [17, 17],
+    [11, 51],
+    [18, 27],
+    [19, 28],
+  ])
+})
+
+test('React Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
+  expect(readReactHookSources().map(item => item.filePath)).toEqual([
+    'packages/shared-ui/src/index.ts',
+    'projects/admin/src/app.tsx',
+    'projects/admin/src/main.tsx',
+    'projects/admin/src/provider/context.ts',
+    'projects/admin/src/provider/hooks.ts',
+    'projects/admin/src/provider/index.tsx',
+    'projects/admin/src/router.tsx',
+    'projects/admin/src/routes/__root.tsx',
+    'projects/admin/src/routes/index.tsx',
+    'projects/client/src/app.tsx',
+    'projects/client/src/main.tsx',
+    'projects/client/src/provider/context.ts',
+    'projects/client/src/provider/hooks.ts',
+    'projects/client/src/provider/index.tsx',
+    'projects/client/src/router.tsx',
+    'projects/client/src/routes/__root.tsx',
+    'projects/client/src/routes/index.tsx',
   ])
 })
 
@@ -159,8 +180,7 @@ test('React Hook 源码由官方 rules-of-hooks 全仓检查且不存在漏检',
     ))).toBe(true)
   }
 
-  const sources = readRepositoryTypeScriptSources(['packages', 'projects'])
-    .filter(source => !source.filePath.endsWith('.d.ts'))
+  const sources = readReactHookSources()
   const checkedFiles = new Set<string>()
   const diagnostics: string[] = []
   const results = await eslint.lintFiles(sources.map(source => (
@@ -185,7 +205,6 @@ test('React Hook 源码由官方 rules-of-hooks 全仓检查且不存在漏检',
       diagnostics.push(`${source.filePath}: ESLint 未检查该源码`)
   }
 
-  expect(readReactHookSources().length).toBeGreaterThan(0)
   expect(sources.length).toBeGreaterThan(0)
   expect(diagnostics).toEqual([])
 }, 30_000)

@@ -4,6 +4,7 @@
  * SociLab 保留同名转换、别名返回与小型对象投影建议，不复制 SDK、Store 或组件命名假设
  * 本检查无响应式、回调更新或 SSR 状态，报告回调可注入且诊断本身不会触发硬失败
  */
+// cspell:ignore qygent
 import type { TypeScriptSource } from './quality-guard-source'
 import * as ts from 'typescript'
 import {

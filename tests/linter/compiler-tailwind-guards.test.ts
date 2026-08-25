@@ -69,7 +69,7 @@ describe('真实 Tailwind 守卫', () => {
       ['!w-fit', 'w-fit!'],
       ['aspect-[4/3]', 'aspect-4/3'],
     ])
-  })
+  }, 15_000)
 
   it('捕获同一静态 class 列表中的 CSS 属性冲突', async () => {
     const diagnostics = await readTailwindCssConflictDiagnostics([

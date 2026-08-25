@@ -4,6 +4,7 @@
  * SociLab 只组合默认主题和 packages/shared-ui/src/styles.css，不带入 shadcn 或 Electron 假设
  * 本检查无响应式、回调更新或 SSR 状态，主题读取与编译异常直接进入硬失败边界
  */
+// cspell:ignore qygent
 import type { TypeScriptSource } from './quality-guard-source'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'

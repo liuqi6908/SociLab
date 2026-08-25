@@ -4,6 +4,7 @@
  * SociLab 只扫描 Client、Admin 与 Shared UI TSX，并将所有失败收窄为零预算诊断
  * 本检查不参与 React 响应式、回调更新或 SSR 生命周期，转换异常也作为硬诊断返回
  */
+// cspell:ignore qygent
 import type { LoggerEvent } from 'babel-plugin-react-compiler'
 import type { TypeScriptSource } from './quality-guard-source'
 import { transformSync } from '@babel/core'

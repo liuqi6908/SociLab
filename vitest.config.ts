@@ -16,12 +16,26 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
-    environmentMatchGlobs: [
-      ['tests/{client,admin}/**/*.test.{ts,tsx}', 'jsdom'],
-    ],
     globalSetup: ['./tests/linter/global-setup.ts'],
-    include: ['tests/**/*.test.{ts,tsx}'],
     maxWorkers: 4,
+    projects: [
+      {
+        extends: true,
+        test: {
+          environment: 'node',
+          exclude: ['tests/{client,admin}/**/*.test.{ts,tsx}'],
+          include: ['tests/**/*.test.{ts,tsx}'],
+          name: 'node',
+        },
+      },
+      {
+        extends: true,
+        test: {
+          environment: 'jsdom',
+          include: ['tests/{client,admin}/**/*.test.{ts,tsx}'],
+          name: 'web',
+        },
+      },
+    ],
   },
 })

@@ -1,7 +1,6 @@
 {
   "recommendations": [
     "dbaeumer.vscode-eslint",
-    "streetsidesoftware.code-spell-checker",
-    "TypeScriptTeam.native-preview"
+    "streetsidesoftware.code-spell-checker"
   ]
 }

@@ -1,0 +1,24 @@
+declare function createClient(): unknown
+declare function use(value: string): void
+
+export function leading(options: { userId: string; workspaceId: string }) {
+  const { workspaceId } = options
+  const userId = options.userId
+  const client = createClient()
+  use(workspaceId)
+  return { client, userId }
+}
+
+export function narrowed(value: unknown) {
+  if (!value || typeof value !== 'object')
+    return
+  const type = (value as { type?: string }).type
+  return type
+}
+
+export function optional(input: { payload: unknown } | undefined) {
+  if (!input)
+    return
+  const payload = input.payload
+  return payload
+}

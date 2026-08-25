@@ -1,0 +1,17 @@
+export function SingleLine() {
+  return <Message />
+}
+
+export function LongLine() {
+  return (
+    <Message value="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+  )
+}
+
+export function MultilineJsx() {
+  return (
+    <Message
+      value="value"
+    />
+  )
+}

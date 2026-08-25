@@ -1,0 +1,5 @@
+/** @deprecated 请改用 current */
+declare function legacy(): void
+declare function current(): void
+
+current()

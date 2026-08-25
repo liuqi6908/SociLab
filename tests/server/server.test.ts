@@ -1,6 +1,8 @@
+import { ORPCError } from '@orpc/server'
 import { ApiError } from '@socilab/api'
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../../projects/server/src/app'
+import { normalizeProtocolResponse } from '../../projects/server/src/app/orpc'
 
 /** 创建内存服务请求 */
 function request(
@@ -24,17 +26,22 @@ describe('server', () => {
     })
   })
 
-  it('在 OpenAPI 入口公开 meta.info 契约', async () => {
-    const response = await request(createApp(), '/api/openapi/spec.json')
+  it('在 OpenAPI 入口只公开 meta.info 契约并可实际调用', async () => {
+    const app = createApp()
+    const documentResponse = await request(app, '/api/openapi/spec.json')
+    const procedureResponse = await request(app, '/api/openapi/meta/info')
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
+    expect(documentResponse.status).toBe(200)
+    await expect(documentResponse.json()).resolves.toMatchObject({
       info: { title: 'SociLab API', version: '0.1.0' },
-      paths: {
-        '/meta/info': {
-          get: expect.any(Object),
-        },
-      },
+    })
+    const document = await (await request(app, '/api/openapi/spec.json')).json()
+
+    expect(Object.keys(document.paths)).toEqual(['/meta/info'])
+    expect(procedureResponse.status).toBe(200)
+    await expect(procedureResponse.json()).resolves.toEqual({
+      name: 'SociLab',
+      version: '0.1.0',
     })
   })
 
@@ -48,6 +55,32 @@ describe('server', () => {
     })
 
     expect(allowed.headers.get('access-control-allow-origin')).toBe('https://console.socilab.test')
+    expect(rejected.headers.get('access-control-allow-origin')).toBeNull()
+  })
+
+  it('仅接受已配置 Origin 的 CORS 预检请求', async () => {
+    const app = createApp({ corsOrigins: ['https://console.socilab.test'] })
+    const init = {
+      headers: {
+        'access-control-request-headers': 'Content-Type',
+        'access-control-request-method': 'GET',
+      },
+      method: 'OPTIONS',
+    }
+    const allowed = await request(app, '/api/rpc/meta/info', {
+      ...init,
+      headers: { ...init.headers, origin: 'https://console.socilab.test' },
+    })
+    const rejected = await request(app, '/api/rpc/meta/info', {
+      ...init,
+      headers: { ...init.headers, origin: 'https://untrusted.example.test' },
+    })
+
+    expect(allowed.status).toBe(204)
+    expect(allowed.headers.get('access-control-allow-origin')).toBe('https://console.socilab.test')
+    expect(allowed.headers.get('access-control-allow-methods')).toContain('GET')
+    expect(allowed.headers.get('access-control-allow-headers')).toBe('Content-Type')
+    expect(rejected.status).toBe(204)
     expect(rejected.headers.get('access-control-allow-origin')).toBeNull()
   })
 
@@ -103,6 +136,89 @@ describe('server', () => {
     await expect(response.json()).resolves.toEqual({
       message: '服务器内部错误',
       code: 'INTERNAL_SERVER_ERROR',
+    })
+  })
+
+  it('隐藏 meta.info 输出校验失败的内部细节', async () => {
+    const response = await request(createApp({
+      meta: {
+        getInfo: () => ({ name: 'SociLab', version: 'secret-output-version' }) as never,
+      },
+    }), '/api/rpc/meta/info')
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      message: '服务器内部错误',
+      code: 'INTERNAL_SERVER_ERROR',
+    })
+  })
+
+  it('隐藏 meta.info 抛出的内部 oRPC 异常细节', async () => {
+    const response = await request(createApp({
+      meta: {
+        getInfo: () => {
+          throw new ORPCError('INTERNAL_SERVER_ERROR', {
+            message: 'secret internal oRPC failure',
+          })
+        },
+      },
+    }), '/api/rpc/meta/info')
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      message: '服务器内部错误',
+      code: 'INTERNAL_SERVER_ERROR',
+    })
+  })
+
+  it('保留 3xx 和 304 协议响应而不重写其实体', async () => {
+    const redirect = new Response('redirect payload', {
+      headers: { location: '/next' },
+      status: 302,
+    })
+    const notModified = new Response(null, {
+      headers: { etag: '"unchanged"' },
+      status: 304,
+    })
+    const normalizedRedirect = await normalizeProtocolResponse(redirect)
+    const normalizedNotModified = await normalizeProtocolResponse(notModified)
+
+    expect(normalizedRedirect).toBe(redirect)
+    expect(normalizedRedirect.headers.get('location')).toBe('/next')
+    await expect(normalizedRedirect.text()).resolves.toBe('redirect payload')
+    expect(normalizedNotModified).toBe(notModified)
+    expect(normalizedNotModified.headers.get('etag')).toBe('"unchanged"')
+  })
+
+  it('重建错误响应时清理过期实体 headers 并保留 CORS 与重试语义', async () => {
+    const response = new Response(JSON.stringify({
+      json: {
+        code: 'BAD_REQUEST',
+        data: { issues: [] },
+        message: 'Input validation failed',
+      },
+    }), {
+      headers: {
+        'access-control-allow-origin': 'https://console.socilab.test',
+        'content-encoding': 'gzip',
+        'content-length': '999',
+        'content-type': 'application/json',
+        'etag': '"old-entity"',
+        'retry-after': '60',
+      },
+      status: 400,
+    })
+    const normalized = await normalizeProtocolResponse(response)
+
+    expect(normalized.headers.get('access-control-allow-origin')).toBe('https://console.socilab.test')
+    expect(normalized.headers.get('retry-after')).toBe('60')
+    expect(normalized.headers.get('content-encoding')).toBeNull()
+    expect(normalized.headers.get('content-length')).toBeNull()
+    expect(normalized.headers.get('etag')).toBeNull()
+    await expect(normalized.json()).resolves.toMatchObject({
+      code: 'BAD_REQUEST',
+      details: { issues: [] },
+      message: 'Input validation failed',
     })
   })
 })

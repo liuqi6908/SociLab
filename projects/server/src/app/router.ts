@@ -26,7 +26,11 @@ const errorBoundary = os.middleware(async ({ next }) => {
       })
     }
 
-    if (error instanceof ORPCError && error.cause instanceof ValidationError) {
+    if (
+      error instanceof ORPCError
+      && error.code === 'BAD_REQUEST'
+      && error.cause instanceof ValidationError
+    ) {
       throw new ORPCError('BAD_REQUEST', {
         message: error.message,
         data: {
@@ -40,7 +44,7 @@ const errorBoundary = os.middleware(async ({ next }) => {
       })
     }
 
-    if (error instanceof ORPCError)
+    if (error instanceof ORPCError && error.status < 500)
       throw error
 
     throw new ORPCError('INTERNAL_SERVER_ERROR', {

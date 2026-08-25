@@ -33,19 +33,19 @@ export function registerApiProtocols(app: Hono, router: AnyRouter) {
 async function handleRpcRequest(request: Request, handler: RPCHandler<Record<never, never>>) {
   const result = await handler.handle(request, { prefix: API_RPC_PATH })
 
-  return result.response && await normalizeErrorResponse(result.response)
+  return result.response && await normalizeProtocolResponse(result.response)
 }
 
 /** 将 OpenAPI adapter 的错误响应收敛为公共错误结构 */
 async function handleOpenApiRequest(request: Request, handler: OpenAPIHandler<Record<never, never>>) {
   const result = await handler.handle(request, { prefix: API_OPENAPI_PATH })
 
-  return result.response && await normalizeErrorResponse(result.response)
+  return result.response && await normalizeProtocolResponse(result.response)
 }
 
 /** 从 oRPC 错误响应提取公共错误字段 */
-async function normalizeErrorResponse(response: Response) {
-  if (response.ok)
+export async function normalizeProtocolResponse(response: Response) {
+  if (response.status < 400)
     return response
 
   const contentType = response.headers.get('content-type')
@@ -71,9 +71,19 @@ async function normalizeErrorResponse(response: Response) {
   })
 
   return Response.json(body, {
-    headers: response.headers,
+    headers: createErrorResponseHeaders(response.headers),
     status: response.status,
   })
+}
+
+/** 保留传输语义头，同时移除已经绑定旧实体的响应头 */
+function createErrorResponseHeaders(source: Headers) {
+  const headers = new Headers(source)
+
+  for (const name of ['content-encoding', 'content-length', 'content-md5', 'content-range', 'digest', 'etag', 'last-modified'])
+    headers.delete(name)
+
+  return headers
 }
 
 /** 收窄未知 JSON 值为记录 */

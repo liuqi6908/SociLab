@@ -38,4 +38,32 @@ describe('废弃 API 守卫', () => {
       ].join('\n'),
     }])).toEqual([])
   })
+
+  it('支持物理不存在目录中的跨文件相对导入', () => {
+    const diagnostics = readDeprecatedApiDiagnostics([
+      {
+        filePath: 'fixtures/shared/legacy.ts',
+        source: [
+          '/** @deprecated 请改用 current */',
+          'export function legacy(): void {}',
+        ].join('\n'),
+      },
+      {
+        filePath: 'fixtures/feature/consumer.ts',
+        source: [
+          `import { legacy } from '../shared/legacy'`,
+          '',
+          'legacy()',
+        ].join('\n'),
+      },
+    ])
+
+    expect(diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        column: 1,
+        filePath: 'fixtures/feature/consumer.ts',
+        line: 3,
+      }),
+    ]))
+  })
 })

@@ -15,6 +15,13 @@ export interface ExplicitExportDiagnostic {
   line: number
 }
 
+/** -------------------- 常量 -------------------- */
+/** 允许不导出符号的应用入口 */
+const allowedEntryFilePaths = new Set([
+  'projects/admin/src/main.tsx',
+  'projects/client/src/main.tsx',
+])
+
 /** -------------------- 核心函数 -------------------- */
 /**
  * 检查源码 default、星号导出以及缺少命名导出的模块
@@ -85,7 +92,7 @@ export function readExplicitExportDiagnostics(
 
     if (
       !hasNamedExport
-      && !/(?:^|\/)main\.tsx?$/.test(filePath)
+      && !allowedEntryFilePaths.has(filePath)
       && !filePath.endsWith('.d.ts')
     ) {
       diagnostics.push({

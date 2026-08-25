@@ -212,4 +212,30 @@ describe('参数属性顺序守卫', () => {
       ['nullableUnsafe', 'nullableId 来自参数 input，必须在函数体开头声明'],
     ])
   })
+
+  it('支持物理不存在目录中的跨文件相对类型导入', () => {
+    const diagnostics = readParameterPropertyOrderDiagnostics([
+      {
+        filePath: 'fixtures/shared/input.ts',
+        source: 'export interface SharedInput { userId: string }',
+      },
+      {
+        filePath: 'fixtures/feature/consumer.ts',
+        source: [
+          `import type { SharedInput } from '../shared/input'`,
+          'declare function createClient(): unknown',
+          '',
+          'export function lateImported(options: SharedInput) {',
+          '  const client = createClient()',
+          '  const userId = options.userId',
+          '  return { client, userId }',
+          '}',
+        ].join('\n'),
+      },
+    ])
+
+    expect(diagnostics.map(item => [item.scope, item.line, item.message])).toEqual([
+      ['lateImported', 6, 'userId 来自参数 options，必须在函数体开头声明'],
+    ])
+  })
 })

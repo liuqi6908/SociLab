@@ -6,7 +6,10 @@
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { comparePositionedDiagnostics } from './source'
+import {
+  comparePositionedDiagnostics,
+  createVirtualTypeScriptPathHost,
+} from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 废弃 API 使用诊断 */
@@ -35,10 +38,8 @@ export function readDeprecatedApiDiagnostics(
   sources: readonly TypeScriptSource[],
   root = repositoryRoot,
 ) {
-  const sourceByFileName = new Map(sources.map(item => [
-    path.resolve(root, item.filePath),
-    item,
-  ]))
+  const virtualHost = createVirtualTypeScriptPathHost(sources, root)
+  const { sourceByFileName } = virtualHost
   const fileNames = [...sourceByFileName.keys()]
   const configPath = ts.findConfigFile(root, ts.sys.fileExists)
   const config = configPath
@@ -50,26 +51,21 @@ export function readDeprecatedApiDiagnostics(
     configPath ? path.dirname(configPath) : root,
   ).options
   const host: ts.LanguageServiceHost = {
-    directoryExists: ts.sys.directoryExists,
-    fileExists: fileName => (
-      sourceByFileName.has(path.resolve(fileName)) || ts.sys.fileExists(fileName)
-    ),
+    directoryExists: virtualHost.directoryExists,
+    fileExists: virtualHost.fileExists,
     getCompilationSettings: () => compilerOptions,
     getCurrentDirectory: () => root,
     getDefaultLibFileName: options => ts.getDefaultLibFilePath(options),
-    getDirectories: ts.sys.getDirectories,
+    getDirectories: virtualHost.getDirectories,
     getScriptFileNames: () => fileNames,
     getScriptSnapshot: (fileName) => {
-      const source = sourceByFileName.get(path.resolve(fileName))?.source
-        ?? ts.sys.readFile(fileName)
+      const source = virtualHost.readFile(fileName)
 
       return source === undefined ? undefined : ts.ScriptSnapshot.fromString(source)
     },
     getScriptVersion: () => '0',
     readDirectory: ts.sys.readDirectory,
-    readFile: fileName => (
-      sourceByFileName.get(path.resolve(fileName))?.source ?? ts.sys.readFile(fileName)
-    ),
+    readFile: virtualHost.readFile,
     realpath: ts.sys.realpath,
     useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames,
   }

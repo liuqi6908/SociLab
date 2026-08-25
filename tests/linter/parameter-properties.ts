@@ -8,6 +8,7 @@ import path from 'node:path'
 import * as ts from 'typescript'
 import {
   comparePositionedDiagnostics,
+  createVirtualTypeScriptPathHost,
   positionOf,
 } from './source'
 import { unwrapExpression } from './ast'
@@ -203,10 +204,8 @@ function parseTypeCheckedSources(
   sources: readonly TypeScriptSource[],
   root = repositoryRoot,
 ): TypeCheckedSource[] {
-  const sourceByFileName = new Map(sources.map(item => [
-    path.resolve(root, item.filePath),
-    item,
-  ]))
+  const virtualHost = createVirtualTypeScriptPathHost(sources, root)
+  const { sourceByFileName } = virtualHost
   const fileNames = [...sourceByFileName.keys()]
   const configPath = ts.findConfigFile(root, ts.sys.fileExists)
   const readConfig = configPath
@@ -237,21 +236,19 @@ function parseTypeCheckedSources(
   const host = ts.createCompilerHost(compilerOptions, true)
   const readSourceFile = host.getSourceFile.bind(host)
 
-  host.fileExists = fileName => (
-    sourceByFileName.has(path.resolve(fileName)) || ts.sys.fileExists(fileName)
-  )
-  host.readFile = fileName => (
-    sourceByFileName.get(path.resolve(fileName))?.source ?? ts.sys.readFile(fileName)
-  )
+  host.directoryExists = virtualHost.directoryExists
+  host.fileExists = virtualHost.fileExists
+  host.getDirectories = virtualHost.getDirectories
+  host.readFile = virtualHost.readFile
   host.getSourceFile = (
     fileName,
     languageVersionOrOptions,
     onError,
     shouldCreateNewSourceFile,
   ) => {
-    const source = sourceByFileName.get(path.resolve(fileName))?.source
+    const source = virtualHost.readFile(fileName)
 
-    if (source === undefined) {
+    if (!sourceByFileName.has(path.resolve(fileName))) {
       return readSourceFile(
         fileName,
         languageVersionOrOptions,
@@ -375,7 +372,6 @@ export function readParameterPropertyOrderDiagnostics(
 
   return diagnostics.sort(comparePositionedDiagnostics)
 }
-
 /**
  * 将参数属性声明顺序诊断格式化为测试失败信息
  */

@@ -62,13 +62,43 @@ describe('显式导出守卫', () => {
         ].join('\n'),
       },
       {
-        filePath: 'projects/server/src/main.ts',
-        source: 'void 0',
+        filePath: 'projects/admin/src/main.tsx',
+        source: [
+          `import { createRoot } from 'react-dom/client'`,
+          '',
+          `const root = document.querySelector('#root')`,
+          '',
+          'if (root)',
+          '  createRoot(root).render(null)',
+        ].join('\n'),
       },
       {
         filePath: 'projects/client/src/vite-env.d.ts',
         source: '/// <reference types="vite/client" />',
       },
     ])).toEqual([])
+  })
+
+  it('只豁免实际应用入口路径', () => {
+    const diagnostics = readExplicitExportDiagnostics([
+      {
+        filePath: 'packages/example/src/main.ts',
+        source: 'void 0',
+      },
+      {
+        filePath: 'tests/example/main.ts',
+        source: 'void 0',
+      },
+      {
+        filePath: 'projects/server/src/main.ts',
+        source: 'void 0',
+      },
+    ])
+
+    expect(diagnostics.map(item => `${item.filePath}:${item.kind}`)).toEqual([
+      'packages/example/src/main.ts:missing-named-export',
+      'tests/example/main.ts:missing-named-export',
+      'projects/server/src/main.ts:missing-named-export',
+    ])
   })
 })

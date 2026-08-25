@@ -1,3 +1,4 @@
+import path from 'node:path'
 import * as ts from 'typescript'
 
 /** -------------------- 类型 -------------------- */
@@ -54,6 +55,68 @@ export function comparePositionedDiagnostics(
   return left.filePath.localeCompare(right.filePath)
     || left.line - right.line
     || left.column - right.column
+}
+
+/**
+ * 为虚拟 TypeScript 源码提供稳定的目录与文件查询边界
+ */
+export function createVirtualTypeScriptPathHost(
+  sources: readonly TypeScriptSource[],
+  root: string,
+) {
+  const sourceByFileName = new Map(sources.map(item => [
+    path.resolve(root, item.filePath),
+    item,
+  ]))
+  const virtualDirectoryPaths = new Set<string>()
+
+  for (const fileName of sourceByFileName.keys()) {
+    let currentDir = path.dirname(fileName)
+
+    while (!virtualDirectoryPaths.has(currentDir)) {
+      virtualDirectoryPaths.add(currentDir)
+
+      if (currentDir === root)
+        break
+
+      const parentDir = path.dirname(currentDir)
+
+      if (parentDir === currentDir)
+        break
+
+      currentDir = parentDir
+    }
+  }
+
+  return {
+    sourceByFileName,
+    directoryExists: (directoryName: string) => (
+      virtualDirectoryPaths.has(path.resolve(directoryName))
+      || ts.sys.directoryExists(directoryName)
+    ),
+    fileExists: (fileName: string) => (
+      sourceByFileName.has(path.resolve(fileName))
+      || ts.sys.fileExists(fileName)
+    ),
+    getDirectories: (directoryName: string) => {
+      const absoluteDir = path.resolve(directoryName)
+      const virtualDirectories = [...virtualDirectoryPaths]
+        .filter(item => path.dirname(item) === absoluteDir)
+        .map(item => path.basename(item))
+      const realDirectories = ts.sys.directoryExists(directoryName)
+        ? ts.sys.getDirectories(directoryName)
+        : []
+
+      return [...new Set([
+        ...realDirectories,
+        ...virtualDirectories,
+      ])].sort((left, right) => left.localeCompare(right))
+    },
+    readFile: (fileName: string) => (
+      sourceByFileName.get(path.resolve(fileName))?.source
+      ?? ts.sys.readFile(fileName)
+    ),
+  }
 }
 
 /** -------------------- 项目路径 -------------------- */

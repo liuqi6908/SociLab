@@ -1,4 +1,0 @@
-const value = 1
-
-export { value }
-export type { Value } from './types'

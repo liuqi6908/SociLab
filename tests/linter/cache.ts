@@ -82,11 +82,6 @@ export function readRepositoryGuardInputs(root = repositoryRoot) {
       const absolutePath = path.join(dir, entry.name)
 
       if (entry.isDirectory()) {
-        const relativeDir = toPosixPath(path.relative(root, absolutePath))
-
-        if (relativeDir === 'tests/linter/fixtures')
-          continue
-
         collect(absolutePath)
         continue
       }

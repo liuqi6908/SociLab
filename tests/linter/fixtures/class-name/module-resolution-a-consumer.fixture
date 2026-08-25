@@ -1,5 +1,0 @@
-import { ROOT_CLASS_NAME } from './styles-a'
-
-export function ModuleAConsumer() {
-  return <div className={ROOT_CLASS_NAME} />
-}

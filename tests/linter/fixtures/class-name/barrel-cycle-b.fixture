@@ -1,1 +1,0 @@
-export { CYCLE_CLASS_NAME } from './cycle-a'

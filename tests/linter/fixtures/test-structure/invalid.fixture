@@ -1,5 +1,0 @@
-import { expect, test } from 'vitest'
-
-test('detects misplaced tests', () => {
-  expect(true).toBe(true)
-})

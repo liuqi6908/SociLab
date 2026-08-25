@@ -1,8 +1,0 @@
-export interface MissingDocumentation {
-  value: string
-}
-
-/** 只有声明注释 */
-export interface MissingMemberDocumentation {
-  value: string
-}

@@ -1,23 +1,14 @@
-/**
- * 比照 qygent@9da43edf 的 tests/linter/transformed-property-shorthand.ts
- * 原实现以 TypeScript AST 汇总多类项目命名建议并通过 console.warn 报告
- * SociLab 保留同名转换、别名返回与小型对象投影建议，不复制 SDK、Store 或组件命名假设
- * 本检查无响应式、回调更新或 SSR 状态，报告回调可注入且诊断本身不会触发硬失败
- */
-// cspell:ignore qygent
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
 import { isImplementedFunction, unwrapExpression } from './ast'
 import {
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-} from './repository-paths'
-import {
   comparePositionedDiagnostics,
   parseTypeScriptSources,
   positionOf,
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
 } from './source'
 
 /** -------------------- 类型 -------------------- */

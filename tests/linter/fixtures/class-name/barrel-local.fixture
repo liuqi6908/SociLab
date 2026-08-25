@@ -1,3 +1,0 @@
-import { ROOT_CLASS_NAME as LOCAL_ROOT_CLASS_NAME } from './styles-b'
-
-export { LOCAL_ROOT_CLASS_NAME as SECOND_ROOT_CLASS_NAME }

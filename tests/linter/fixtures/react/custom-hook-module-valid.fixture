@@ -1,5 +1,0 @@
-export function Component() {
-  const value = useSeparatedHook()
-
-  return <span>{value}</span>
-}

@@ -1,8 +1,9 @@
+import type { TypeScriptSource } from './source'
 import path from 'node:path'
 import {
   parseTypeScriptSources,
   readModuleSpecifier,
-  type TypeScriptSource,
+
 } from './source'
 
 /** -------------------- 类型 -------------------- */
@@ -11,7 +12,11 @@ export interface TestStructureDiagnostic {
   /** 诊断文件 */
   filePath: string
   /** 违规类型 */
-  kind: 'cross-domain-import' | 'file-too-large'
+  kind:
+    | 'cross-domain-import'
+    | 'file-too-large'
+    | 'missing-domain-directory'
+    | 'outside-tests'
   /** 超限测试文件行数 */
   lineCount?: number
   /** 被跨领域引用的测试目录 */
@@ -33,6 +38,11 @@ export function readTestStructureDiagnostics(
 
   for (const { filePath, source, sourceFile } of parseTypeScriptSources(sources)) {
     if (/\.(?:spec|test)\.tsx?$/.test(filePath)) {
+      if (!filePath.startsWith('tests/'))
+        diagnostics.push({ filePath, kind: 'outside-tests' })
+      else if (/^tests\/[^/]+$/.test(filePath))
+        diagnostics.push({ filePath, kind: 'missing-domain-directory' })
+
       const lines = source.split(/\r?\n/)
       const lineCount = lines.at(-1) === '' ? lines.length - 1 : lines.length
 
@@ -121,6 +131,12 @@ export function assertTestStructure(sources: readonly TypeScriptSource[]) {
 function describeTestStructureDiagnostic(diagnostic: TestStructureDiagnostic) {
   if (diagnostic.kind === 'cross-domain-import')
     return `领域测试不得相对导入 tests/${diagnostic.targetDomain}，跨领域共享能力应归入 tests/support`
+
+  if (diagnostic.kind === 'missing-domain-directory')
+    return '测试文件必须归入 tests 下的领域目录'
+
+  if (diagnostic.kind === 'outside-tests')
+    return '测试文件必须统一放入 tests 下的领域目录'
 
   return `测试文件共 ${diagnostic.lineCount} 行，超过 ${MAX_TEST_FILE_LINES} 行上限`
 }

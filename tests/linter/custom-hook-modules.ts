@@ -93,7 +93,7 @@ export function formatCustomHookModuleDiagnostics(
 /**
  * 断言 JSX 组件模块中不存在自定义 Hook 实现
  */
-export function assertNoCustomHookModules(
+export function assertCustomHookModules(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics = readCustomHookModuleDiagnostics(sources)

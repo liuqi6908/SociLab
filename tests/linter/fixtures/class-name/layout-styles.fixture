@@ -1,1 +1,0 @@
-export const EXPORTED_CLASS_NAMES = { item: 'py-sm' }

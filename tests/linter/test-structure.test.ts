@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest'
 import {
-  MAX_TEST_FILE_LINES,
   assertTestStructure,
   formatTestStructureDiagnostics,
+  MAX_TEST_FILE_LINES,
   readTestStructureDiagnostics,
 } from './test-structure'
 
@@ -10,6 +10,16 @@ import {
 const templateDomainInterpolation = '${' + 'domain}'
 
 /** -------------------- 测试 -------------------- */
+it('捕获 tests 根目录和生产源码目录中的测试文件', () => {
+  expect(readTestStructureDiagnostics([
+    { filePath: 'tests/orphan.test.ts', source: 'test()\n' },
+    { filePath: 'projects/client/src/orphan.test.ts', source: 'test()\n' },
+  ])).toEqual([
+    { filePath: 'projects/client/src/orphan.test.ts', kind: 'outside-tests' },
+    { filePath: 'tests/orphan.test.ts', kind: 'missing-domain-directory' },
+  ])
+})
+
 it('捕获超过 2000 行的测试文件与跨领域相对导入', () => {
   const diagnostics = readTestStructureDiagnostics([
     {

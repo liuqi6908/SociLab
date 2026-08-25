@@ -1,10 +1,3 @@
-/**
- * 比照 qygent@9da43edf 的 tests/linter/react-compiler.test.ts
- * 原实现通过 Babel logger 汇总真实 Compiler 事件并允许项目历史失败预算
- * SociLab 只扫描 Client、Admin 与 Shared UI TSX，并将所有失败收窄为零预算诊断
- * 本检查不参与 React 响应式、回调更新或 SSR 生命周期，转换异常也作为硬诊断返回
- */
-// cspell:ignore qygent
 import type { LoggerEvent } from 'babel-plugin-react-compiler'
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
@@ -14,7 +7,7 @@ import reactCompiler from 'babel-plugin-react-compiler'
 import {
   repositoryIgnoredDirNames,
   repositoryIgnoredFileNames,
-} from './repository-paths'
+} from './source'
 
 /** -------------------- 类型 -------------------- */
 /** React Compiler 失败诊断 */
@@ -157,11 +150,6 @@ function readRepositoryTypeScriptSources(
       const absolutePath = path.join(directoryPath, entry.name)
 
       if (entry.isDirectory()) {
-        const relativeDirectory = toPosixPath(path.relative(root, absolutePath))
-
-        if (relativeDirectory === 'tests/linter/fixtures')
-          continue
-
         collect(absolutePath)
         continue
       }

@@ -1,17 +1,13 @@
-/**
- * 比照 qygent@9da43edf 的 tests/linter/tailwind-canonical.ts
- * 原实现使用 Tailwind Design System 比较 canonical 候选与 utility 编译规则
- * SociLab 只组合默认主题和 packages/shared-ui/src/styles.css，不带入 shadcn 或 Electron 假设
- * 本检查无响应式、回调更新或 SSR 状态，主题读取与编译异常直接进入硬失败边界
- */
-// cspell:ignore qygent
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { __unstable__loadDesignSystem } from 'tailwindcss'
 import * as ts from 'typescript'
-import { repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './repository-paths'
-import { parseTypeScriptSources } from './source'
+import {
+  parseTypeScriptSources,
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './source'
 
 /** -------------------- 类型 -------------------- */
 /** Tailwind canonical utility 诊断 */
@@ -220,14 +216,24 @@ export function formatTailwindCssConflictDiagnostics(
 }
 
 /**
- * 断言源码只使用 canonical 且无属性冲突的 Tailwind utility
+ * 断言源码只使用 canonical Tailwind utility
  */
-export async function assertTailwindCanonical(sources: readonly TypeScriptSource[]) {
+export async function assertTailwindCanonicalClasses(
+  sources: readonly TypeScriptSource[],
+) {
   const canonicalDiagnostics = await readTailwindCanonicalDiagnostics(sources)
-  const conflictDiagnostics = await readTailwindCssConflictDiagnostics(sources)
 
   if (canonicalDiagnostics.length > 0)
     throw new Error(formatTailwindCanonicalDiagnostics(canonicalDiagnostics))
+}
+
+/**
+ * 断言同一静态 class 列表中不存在 Tailwind CSS 属性冲突
+ */
+export async function assertTailwindCssConflicts(
+  sources: readonly TypeScriptSource[],
+) {
+  const conflictDiagnostics = await readTailwindCssConflictDiagnostics(sources)
 
   if (conflictDiagnostics.length > 0)
     throw new Error(formatTailwindCssConflictDiagnostics(conflictDiagnostics))

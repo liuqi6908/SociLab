@@ -1,2 +1,0 @@
-export { ROOT_CLASS_NAME } from './styles-a'
-export { SECOND_ROOT_CLASS_NAME } from './local'

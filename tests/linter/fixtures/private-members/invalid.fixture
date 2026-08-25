@@ -1,9 +1,0 @@
-export class InvalidService {
-  private value = 1
-
-  public constructor(private readonly dependency: string) {}
-
-  private read() {
-    return this.value + this.dependency.length
-  }
-}

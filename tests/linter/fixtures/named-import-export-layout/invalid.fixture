@@ -1,5 +1,0 @@
-import type {
-  Alpha,
-  Beta,
-} from './types'
-export { Alpha } from 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'

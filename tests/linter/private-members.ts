@@ -69,7 +69,7 @@ export function formatPrivateMemberDiagnostics(
 /**
  * 断言显式 private 成员及参数属性均使用下划线前缀
  */
-export function assertPrivateMembers(sources: readonly TypeScriptSource[]) {
+export function assertPrivateMemberNaming(sources: readonly TypeScriptSource[]) {
   const diagnostics = readPrivateMemberDiagnostics(sources)
 
   if (diagnostics.length > 0)

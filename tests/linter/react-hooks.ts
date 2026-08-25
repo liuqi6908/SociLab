@@ -3,8 +3,12 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
 import { unwrapExpression } from './ast'
-import { repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './repository-paths'
-import { parseTypeScriptSources, positionOf } from './source'
+import {
+  parseTypeScriptSources,
+  positionOf,
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './source'
 
 /** -------------------- 类型 -------------------- */
 /** React Hook 阶段顺序诊断 */
@@ -240,11 +244,6 @@ function readRepositoryTypeScriptSources(
       const absolutePath = path.join(directoryPath, entry.name)
 
       if (entry.isDirectory()) {
-        const relativeDirectory = toPosixPath(path.relative(root, absolutePath))
-
-        if (relativeDirectory === 'tests/linter/fixtures')
-          continue
-
         collect(absolutePath)
         continue
       }

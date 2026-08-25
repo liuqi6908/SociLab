@@ -1,3 +1,4 @@
+import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
@@ -8,7 +9,7 @@ import {
   repositoryIgnoredDirNames,
   repositoryIgnoredFileNames,
   repositoryRoot,
-  type TypeScriptSource,
+
 } from './source'
 
 // cspell:ignore qygent Qiyan
@@ -52,7 +53,6 @@ const dependencyGroups = [
 const residualOnlyIgnoredDirNames = new Set([
   '.superpowers',
   'docs',
-  'fixtures',
 ])
 const rootConfigNames = new Set([
   '.npmrc',

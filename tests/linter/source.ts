@@ -45,9 +45,6 @@ export const repositoryIgnoredDirNames: ReadonlySet<string> = new Set([
 export const repositoryIgnoredFileNames: ReadonlySet<string> = new Set([
   'routeTree.gen.ts',
 ])
-/** 统一忽略的负例夹具目录 */
-const ignoredFixtureDirectoryPath = 'tests/linter/fixtures'
-
 /** -------------------- 核心函数 -------------------- */
 /**
  * 独立枚举指定根目录中的 TypeScript 源码
@@ -72,11 +69,6 @@ export function readTypeScriptSources(
       const absolutePath = path.join(dir, entry.name)
 
       if (entry.isDirectory()) {
-        const relativeDirectoryPath = toPosixPath(path.relative(root, absolutePath))
-
-        if (relativeDirectoryPath === ignoredFixtureDirectoryPath)
-          continue
-
         collect(absolutePath)
         continue
       }

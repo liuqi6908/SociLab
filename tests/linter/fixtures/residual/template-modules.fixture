@@ -1,6 +1,0 @@
-const pluginModule = import(`@socilab/plugin`)
-const runtimeModule = require(`../../runtime/index`)
-const domain = 'thread'
-const unknownModule = import(`@socilab/${domain}`)
-
-export { pluginModule, runtimeModule, unknownModule }

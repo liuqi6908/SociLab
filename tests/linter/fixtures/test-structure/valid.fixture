@@ -1,5 +1,0 @@
-import { expect, test } from 'vitest'
-
-test('keeps domain tests under tests', () => {
-  expect(true).toBe(true)
-})

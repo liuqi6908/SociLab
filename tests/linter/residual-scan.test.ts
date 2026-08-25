@@ -282,7 +282,6 @@ it('真实仓库扫描排除受控目录并允许计划强制的构建插件包�
       'packages/node_modules/package.json': ignoredManifest,
       'packages/tmp/package.json': ignoredManifest,
       'projects/web/dist/Agent.js': 'export const Agent = true\n',
-      'tests/linter/fixtures/Plugin.ts': 'export const Plugin = true\n',
       'tests/request/valid.test.ts': 'export const pluginName = "router-plugin"\n',
     })
 

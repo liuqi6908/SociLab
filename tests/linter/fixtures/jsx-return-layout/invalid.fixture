@@ -1,5 +1,0 @@
-export function Example() {
-  return (
-    <Message />
-  )
-}

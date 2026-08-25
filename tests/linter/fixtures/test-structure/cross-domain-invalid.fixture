@@ -1,3 +1,0 @@
-import { fixture } from '../protocol/support'
-
-export { fixture }

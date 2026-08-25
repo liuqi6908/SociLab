@@ -1,5 +1,0 @@
-import { CYCLE_CLASS_NAME } from './cycle-a'
-
-export function CycleConsumer() {
-  return <div className={CYCLE_CLASS_NAME} />
-}

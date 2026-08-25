@@ -490,6 +490,43 @@ describe('tailwind 与 className 守卫', () => {
       fixture('class-name/layout-valid.fixture', 'layout-valid.tsx'),
     ])).toEqual([])
   })
+
+  it('按最近词法绑定处理参数、无 initializer 局部变量与 catch 遮蔽', () => {
+    expect(readClassNameDiagnostics([
+      fixture(
+        'class-name/binding-shadowing-valid.fixture',
+        'binding-shadowing-valid.tsx',
+      ),
+    ])).toEqual([])
+  })
+
+  it('按相对模块路径解析跨文件同名样式常量', () => {
+    const diagnostics = readClassNameDiagnostics([
+      fixture(
+        'class-name/module-resolution-a.fixture',
+        'modules/styles-a.ts',
+      ),
+      fixture(
+        'class-name/module-resolution-b.fixture',
+        'modules/styles-b.ts',
+      ),
+      fixture(
+        'class-name/module-resolution-a-consumer.fixture',
+        'modules/consumer-a.tsx',
+      ),
+      fixture(
+        'class-name/module-resolution-b-consumer.fixture',
+        'modules/consumer-b.tsx',
+      ),
+    ])
+
+    expect(diagnostics.map(item => [item.filePath, item.target, item.kind]))
+      .toEqual([[
+        'modules/styles-a.ts',
+        'ROOT_CLASS_NAME',
+        'single-use-class-constant',
+      ]])
+  })
 })
 
 /** -------------------- 测试位置 -------------------- */
@@ -539,6 +576,19 @@ describe('测试目录守卫', () => {
     ])
   })
 
+  it('捕获动态、类型、import equals 与 CommonJS 跨领域导入', () => {
+    const diagnostics = readTestStructureDiagnostics([
+      fixture(
+        'test-structure/module-forms-invalid.fixture',
+        'tests/client/module-forms.test.ts',
+      ),
+    ])
+
+    expect(diagnostics.map(item => (
+      item.kind === 'cross-domain-import' ? item.targetDomain : item.kind
+    ))).toEqual(['protocol', 'request', 'server', 'shared'])
+  })
+
   it('接受 2000 行测试与同领域、support 和生产源码相对导入', () => {
     expect(readTestStructureDiagnostics([
       {
@@ -549,7 +599,37 @@ describe('测试目录守卫', () => {
         'test-structure/imports-valid.fixture',
         'tests/client/imports.test.ts',
       ),
+      fixture(
+        'test-structure/module-forms-valid.fixture',
+        'tests/client/module-forms-valid.test.ts',
+      ),
     ])).toEqual([])
+  })
+
+  it('按文本行语义统计以换行结尾的 2000/2001 行测试', () => {
+    const validLine = fixture(
+      'test-structure/trailing-newline-valid.fixture',
+    ).source
+    const invalidLine = fixture(
+      'test-structure/trailing-newline-invalid.fixture',
+    ).source
+
+    expect(readTestStructureDiagnostics([
+      {
+        filePath: 'tests/client/trailing-valid.test.ts',
+        source: validLine.repeat(2_000),
+      },
+      {
+        filePath: 'tests/client/trailing-invalid.test.ts',
+        source: invalidLine.repeat(2_001),
+      },
+    ])).toEqual([
+      {
+        filePath: 'tests/client/trailing-invalid.test.ts',
+        kind: 'file-too-large',
+        lineCount: 2_001,
+      },
+    ])
   })
 })
 

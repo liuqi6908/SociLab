@@ -709,7 +709,7 @@ function readDynamicClassNameDiagnostics(
 
     const indexInitializers = (node: ts.Node) => {
       if (ts.isVariableDeclaration(node)) {
-        addBinding(readLexicalScope(node), node.name, {
+        addBinding(readBindingScope(node), node.name, {
           initializer: node.initializer,
           node,
         })
@@ -899,39 +899,57 @@ function readClassNameLayoutDiagnostics(
   const parsedSources = parseTypeScriptSources(sources)
   const declarationsBySourceFile = new Map<
     ts.SourceFile,
-    Map<ts.Node, Map<string, ts.VariableDeclaration[]>>
+    Map<ts.Node, Map<string, ClassNameBinding[]>>
   >()
   const constants: ClassNameConstantRecord[] = []
   const constantByDeclaration = new Map<
     ts.VariableDeclaration,
     ClassNameConstantRecord
   >()
-  const constantsByName = new Map<string, ClassNameConstantRecord[]>()
+  const constantsByFilePath = new Map<
+    string,
+    Map<string, ClassNameConstantRecord>
+  >()
 
   for (const { filePath, sourceFile } of parsedSources) {
-    const declarations = new Map<
-      ts.Node,
-      Map<string, ts.VariableDeclaration[]>
-    >()
-    /** 索引每个词法作用域中的局部变量声明 */
+    const declarations = new Map<ts.Node, Map<string, ClassNameBinding[]>>()
+    /** 索引单个词法绑定及解构绑定 */
+    const addBinding = (
+      scope: ts.Node,
+      name: ts.BindingName,
+      binding: ClassNameBinding,
+    ) => {
+      if (!ts.isIdentifier(name)) {
+        for (const element of name.elements) {
+          if (!ts.isOmittedExpression(element))
+            addBinding(scope, element.name, { node: element })
+        }
+        return
+      }
+
+      const scoped = declarations.get(scope) ?? new Map<
+        string,
+        ClassNameBinding[]
+      >()
+      const named = scoped.get(name.text) ?? []
+
+      named.push(binding)
+      scoped.set(name.text, named)
+      declarations.set(scope, scoped)
+    }
+    /** 索引每个词法作用域中的变量与参数绑定 */
     const indexDeclarations = (node: ts.Node) => {
-      if (
-        ts.isVariableDeclaration(node)
-        && ts.isIdentifier(node.name)
-        && node.initializer
-      ) {
-        const scope = readLexicalScope(node)
-        const scoped = declarations.get(scope) ?? new Map<
-          string,
-          ts.VariableDeclaration[]
-        >()
-        const named = scoped.get(node.name.text) ?? []
+      if (ts.isVariableDeclaration(node)) {
+        addBinding(readBindingScope(node), node.name, {
+          initializer: node.initializer,
+          node,
+        })
 
-        named.push(node)
-        scoped.set(node.name.text, named)
-        declarations.set(scope, scoped)
-
-        if (isClassNameConstant(node.name.text)) {
+        if (
+          ts.isIdentifier(node.name)
+          && node.initializer
+          && isClassNameConstant(node.name.text)
+        ) {
           const name = node.name.text
           const record: ClassNameConstantRecord = {
             declaration: node,
@@ -940,13 +958,23 @@ function readClassNameLayoutDiagnostics(
             references: 0,
             sourceFile,
           }
-          const namedRecords = constantsByName.get(name) ?? []
+          const normalizedFilePath = path.posix.normalize(toPosixPath(filePath))
+          const fileConstants = constantsByFilePath.get(normalizedFilePath) ?? new Map<
+            string,
+            ClassNameConstantRecord
+          >()
 
           constants.push(record)
           constantByDeclaration.set(node, record)
-          namedRecords.push(record)
-          constantsByName.set(name, namedRecords)
+          fileConstants.set(name, record)
+          constantsByFilePath.set(normalizedFilePath, fileConstants)
         }
+      }
+      else if (ts.isParameter(node)) {
+        const scope = readParameterScope(node)
+
+        if (scope)
+          addBinding(scope, node.name, { node })
       }
 
       node.forEachChild(indexDeclarations)
@@ -959,7 +987,7 @@ function readClassNameLayoutDiagnostics(
   /** 从当前词法作用域向外解析同名局部变量声明 */
   const resolveDeclaration = (
     sourceFile: ts.SourceFile,
-    declarations: Map<ts.Node, Map<string, ts.VariableDeclaration[]>>,
+    declarations: Map<ts.Node, Map<string, ClassNameBinding[]>>,
     identifier: ts.Identifier,
   ) => {
     let scope: ts.Node | undefined = readLexicalScope(identifier)
@@ -967,7 +995,7 @@ function readClassNameLayoutDiagnostics(
     while (scope) {
       const declaration = declarations.get(scope)
         ?.get(identifier.text)
-        ?.filter(item => item.getStart(sourceFile) < identifier.getStart(sourceFile))
+        ?.filter(item => item.node.getStart(sourceFile) < identifier.getStart(sourceFile))
         .at(-1)
 
       if (declaration)
@@ -977,8 +1005,41 @@ function readClassNameLayoutDiagnostics(
     }
   }
 
-  /** 解析相对模块命名导入与唯一同名样式常量声明 */
-  const readImportedConstants = (sourceFile: ts.SourceFile) => {
+  /** 按导入文件路径解析相对模块中的样式常量声明 */
+  const resolveImportedModule = (filePath: string, specifier: string) => {
+    const sourcePath = path.posix.normalize(toPosixPath(filePath))
+    const targetPath = path.posix.normalize(path.posix.join(
+      path.posix.dirname(sourcePath),
+      specifier,
+    ))
+    const runtimeExtension = targetPath.match(/\.(?:c|m)?jsx?$/)?.[0]
+    const sourceBase = runtimeExtension
+      ? targetPath.slice(0, -runtimeExtension.length)
+      : targetPath
+    const candidates = [
+      targetPath,
+      `${sourceBase}.ts`,
+      `${sourceBase}.tsx`,
+      `${sourceBase}.mts`,
+      `${sourceBase}.cts`,
+      `${targetPath}/index.ts`,
+      `${targetPath}/index.tsx`,
+      `${targetPath}/index.mts`,
+      `${targetPath}/index.cts`,
+    ]
+
+    for (const candidate of candidates) {
+      const constants = constantsByFilePath.get(candidate)
+
+      if (constants)
+        return constants
+    }
+  }
+  /** 解析当前源码的相对模块命名导入 */
+  const readImportedConstants = (
+    filePath: string,
+    sourceFile: ts.SourceFile,
+  ) => {
     const imported = new Map<string, ClassNameConstantRecord>()
 
     for (const statement of sourceFile.statements) {
@@ -992,11 +1053,19 @@ function readClassNameLayoutDiagnostics(
         continue
       }
 
+      const moduleConstants = resolveImportedModule(
+        filePath,
+        statement.moduleSpecifier.text,
+      )
+
+      if (!moduleConstants)
+        continue
+
       for (const specifier of statement.importClause.namedBindings.elements) {
         const sourceName = specifier.propertyName?.text ?? specifier.name.text
-        const [record, duplicate] = constantsByName.get(sourceName) ?? []
+        const record = moduleConstants.get(sourceName)
 
-        if (record && !duplicate)
+        if (record)
           imported.set(specifier.name.text, record)
       }
     }
@@ -1004,15 +1073,17 @@ function readClassNameLayoutDiagnostics(
     return imported
   }
 
-  for (const { sourceFile } of parsedSources) {
+  for (const { filePath, sourceFile } of parsedSources) {
     const declarations = declarationsBySourceFile.get(sourceFile)!
-    const imported = readImportedConstants(sourceFile)
+    const imported = readImportedConstants(filePath, sourceFile)
     /** 统计真实值引用，声明以及导入导出名称不计为消费点 */
     const countReferences = (node: ts.Node) => {
       if (ts.isIdentifier(node) && isIdentifierReference(node)) {
-        const declaration = resolveDeclaration(sourceFile, declarations, node)
-        const record = declaration
-          ? constantByDeclaration.get(declaration)
+        const binding = resolveDeclaration(sourceFile, declarations, node)
+        const record = binding
+          ? ts.isVariableDeclaration(binding.node)
+            ? constantByDeclaration.get(binding.node)
+            : undefined
           : imported.get(node.text)
 
         if (record)
@@ -1291,6 +1362,17 @@ function readParameterScope(parameter: ts.ParameterDeclaration) {
   const parent = parameter.parent
 
   return isFunctionLikeScope(parent) ? parent : undefined
+}
+
+/**
+ * 读取变量声明实际拥有绑定的词法作用域
+ */
+function readBindingScope(declaration: ts.VariableDeclaration) {
+  const parent = declaration.parent
+
+  return ts.isCatchClause(parent)
+    ? parent.block
+    : readLexicalScope(declaration)
 }
 
 function isClassNameScope(node: ts.Node) {
@@ -1822,7 +1904,7 @@ function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
 
   const indexLexicalBindings = (node: ts.Node) => {
     if (ts.isVariableDeclaration(node)) {
-      addBinding(readLexicalScope(node), node.name, node)
+      addBinding(readBindingScope(node), node.name, node)
     }
     else if (ts.isParameter(node)) {
       const scope = readParameterScope(node)

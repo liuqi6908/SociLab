@@ -7,6 +7,7 @@ import {
   isTanStackRoutesDirectory,
   parseTypeScriptSources,
   positionOf,
+  readModuleSpecifier,
   unwrapExpression,
 } from './quality-guard-source'
 
@@ -182,7 +183,8 @@ export function readTestStructureDiagnostics(
 
   for (const { filePath, source, sourceFile } of parseTypeScriptSources(sources)) {
     if (/\.(?:spec|test)\.tsx?$/.test(filePath)) {
-      const lineCount = source.split(/\r?\n/).length
+      const lines = source.split(/\r?\n/)
+      const lineCount = lines.at(-1) === '' ? lines.length - 1 : lines.length
 
       if (lineCount > maxTestFileLines)
         diagnostics.push({ filePath, kind: 'file-too-large', lineCount })
@@ -197,19 +199,15 @@ export function readTestStructureDiagnostics(
     const targetDomains = new Set<string>()
     /** 收集跨领域相对导入目标 */
     const visit = (node: ts.Node) => {
-      const moduleSpecifier = ts.isImportDeclaration(node)
-        || ts.isExportDeclaration(node)
-        ? node.moduleSpecifier
-        : undefined
+      const moduleSpecifier = readModuleSpecifier(node)
 
       if (
         moduleSpecifier
-        && ts.isStringLiteral(moduleSpecifier)
-        && moduleSpecifier.text.startsWith('.')
+        && moduleSpecifier.value.startsWith('.')
       ) {
         const targetPath = path.posix.normalize(path.posix.join(
           path.posix.dirname(filePath),
-          moduleSpecifier.text,
+          moduleSpecifier.value,
         ))
         const [targetRoot, targetDomain] = targetPath.split('/')
 

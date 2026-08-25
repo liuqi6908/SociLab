@@ -1,0 +1,10 @@
+import { ROOT_CLASS_NAME } from './styles-b'
+
+export function ModuleBConsumer() {
+  return (
+    <>
+      <div className={ROOT_CLASS_NAME} />
+      <div className={ROOT_CLASS_NAME} />
+    </>
+  )
+}

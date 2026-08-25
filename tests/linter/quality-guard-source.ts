@@ -33,6 +33,47 @@ export function parseTypeScriptSources(sources: readonly TypeScriptSource[]) {
 }
 
 /**
+ * 读取静态可判定的 ESM、类型导入与 CommonJS 模块说明符
+ */
+export function readModuleSpecifier(node: ts.Node) {
+  if (
+    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+    && node.moduleSpecifier
+    && ts.isStringLiteral(node.moduleSpecifier)
+  ) {
+    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
+  }
+
+  if (ts.isImportEqualsDeclaration(node)) {
+    const reference = node.moduleReference
+
+    if (
+      ts.isExternalModuleReference(reference)
+      && ts.isStringLiteral(reference.expression)
+    ) {
+      return { node: reference.expression, value: reference.expression.text }
+    }
+  }
+
+  if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+    const literal = node.argument.literal
+
+    if (ts.isStringLiteral(literal))
+      return { node: literal, value: literal.text }
+  }
+
+  if (!ts.isCallExpression(node))
+    return
+
+  const isModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
+    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
+  const [specifier] = node.arguments
+
+  if (isModuleCall && specifier && ts.isStringLiteral(specifier))
+    return { node: specifier, value: specifier.text }
+}
+
+/**
  * 读取 AST 节点的一基行列位置
  */
 export function positionOf(sourceFile: ts.SourceFile, node: ts.Node) {

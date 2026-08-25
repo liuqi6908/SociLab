@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { parseTypeScriptSources } from './quality-guards'
+import {
+  parseTypeScriptSources,
+  readModuleSpecifier,
+} from './quality-guard-source'
 
 // cspell:ignore qygent Qiyan
 
@@ -240,40 +243,6 @@ function isForbiddenDependency(name: string) {
   return isElectronPackage(name)
     || /^@qygent(?:\/|$)/.test(name)
     || /^@socilab\/(?:agent|electron|plugin|runtime|thread)(?:\/|$)/.test(name)
-}
-
-function readModuleSpecifier(node: ts.Node) {
-  if (
-    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
-    && node.moduleSpecifier
-    && ts.isStringLiteral(node.moduleSpecifier)
-  ) {
-    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
-  }
-
-  if (ts.isImportEqualsDeclaration(node)) {
-    const reference = node.moduleReference
-
-    if (ts.isExternalModuleReference(reference) && ts.isStringLiteral(reference.expression))
-      return { node: reference.expression, value: reference.expression.text }
-  }
-
-  if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
-    const literal = node.argument.literal
-
-    if (ts.isStringLiteral(literal))
-      return { node: literal, value: literal.text }
-  }
-
-  if (!ts.isCallExpression(node))
-    return
-
-  const staticModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
-    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
-  const [specifier] = node.arguments
-
-  if (staticModuleCall && specifier && ts.isStringLiteral(specifier))
-    return { node: specifier, value: specifier.text }
 }
 
 function isElectronPackage(name: string) {

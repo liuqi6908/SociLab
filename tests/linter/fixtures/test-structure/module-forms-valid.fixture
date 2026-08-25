@@ -1,0 +1,9 @@
+import LocalModule = require('./local')
+
+type SupportValue = import('../support/types').SupportValue
+
+const supportModule = import('../support/dynamic')
+const productionModule = require('../../packages/shared/src')
+
+export { LocalModule, productionModule, supportModule }
+export type { SupportValue }

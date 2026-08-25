@@ -1,0 +1,30 @@
+const PARAM_CLASS_NAME = 'flex gap-sm'
+const localRoot = { root: 'outer-local' }
+const caughtRoot = { root: 'outer-catch' }
+const destructuredRoot = { root: 'outer-destructured' }
+
+export function ParameterShadow(PARAM_CLASS_NAME: string) {
+  return <div className={PARAM_CLASS_NAME} />
+}
+
+export function LocalShadow() {
+  let localRoot: { root: string }
+
+  localRoot = { root: 'inner-local' }
+  return <Button classNames={localRoot} />
+}
+
+export function CatchShadow() {
+  try {
+    throw { root: 'inner-catch' }
+  }
+  catch (caughtRoot) {
+    return <Button classNames={caughtRoot} />
+  }
+}
+
+export function DestructuredShadow({ destructuredRoot }: {
+  destructuredRoot: { root: string }
+}) {
+  return <Button classNames={destructuredRoot} />
+}

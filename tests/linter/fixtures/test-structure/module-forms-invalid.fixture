@@ -1,0 +1,9 @@
+import LegacyServer = require('../server/legacy')
+
+type RequestValue = import('../request/types').RequestValue
+
+const protocolModule = import('../protocol/dynamic')
+const sharedModule = require('../shared/common')
+
+export { LegacyServer, protocolModule, sharedModule }
+export type { RequestValue }

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@qygent/shared": "workspace:*",
+    "@socilab/plugin": "workspace:*",
+    "electron": "^40.0.0"
+  }
+}

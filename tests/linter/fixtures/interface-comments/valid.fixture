@@ -1,0 +1,13 @@
+interface InternalState {
+  value: string
+}
+
+/** 公共输入 */
+export interface PublicInput {
+  /** 输入值 */
+  value: string
+}
+
+export function readValue(input: PublicInput, state: InternalState) {
+  return input.value || state.value
+}

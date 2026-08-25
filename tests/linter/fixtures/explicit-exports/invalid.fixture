@@ -1,0 +1,5 @@
+const hidden = 1
+
+export default hidden
+export * from './other'
+export { hidden as default }

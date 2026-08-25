@@ -1,0 +1,11 @@
+export class ValidService {
+  public constructor(private readonly _dependency: string) {}
+
+  private _read() {
+    return this._dependency
+  }
+
+  public execute() {
+    return this._read()
+  }
+}

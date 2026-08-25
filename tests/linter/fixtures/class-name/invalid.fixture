@@ -1,0 +1,11 @@
+export function InvalidClassName({ active, color }: { active: boolean; color: string }) {
+  const joined = ['flex', active && 'gap-2'].filter(Boolean).join(' ')
+
+  return (
+    <>
+      <div className={`bg-${color}`} />
+      <div className={'flex ' + (active ? 'gap-2' : '')} />
+      <div className={joined} />
+    </>
+  )
+}

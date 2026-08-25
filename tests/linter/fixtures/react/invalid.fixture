@@ -1,0 +1,12 @@
+import { useEffect, useMemo, useState } from 'react'
+
+export const ArrowComponent = () => <div />
+
+export function InvalidHookOrder() {
+  useEffect(() => undefined, [])
+  const [count] = useState(0)
+  const handleClick = () => count
+  const doubled = useMemo(() => count * 2, [count])
+
+  return <button onClick={handleClick}>{doubled}</button>
+}

@@ -2,7 +2,7 @@ import type { ServerType } from '@hono/node-server'
 import process from 'node:process'
 import { serve } from '@hono/node-server'
 import { createApp } from './app/index.js'
-import { loadServerConfig } from './infra/env.js'
+import { loadServerConfig } from './infra/index.js'
 
 /** 已启动服务的关闭句柄 */
 export interface ServerHandle {

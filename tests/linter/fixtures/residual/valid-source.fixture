@@ -1,0 +1,8 @@
+import react from '@vitejs/plugin-react'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+export interface PluginOption {
+  runtimeFetch: typeof fetch
+}
+
+export const plugins = [react(), tanstackRouter()]

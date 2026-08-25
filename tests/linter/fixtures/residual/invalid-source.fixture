@@ -1,0 +1,9 @@
+import { createAgent } from '@qygent/agent'
+import { startRuntime } from '@socilab/runtime'
+import { createThread } from '../../thread/index'
+
+export const product = 'QiyanAgent'
+export const formerCompany = 'QiyanSoft'
+export interface Agent {}
+export const Electron = 'legacy-shell'
+export const values = [createAgent, startRuntime, createThread]

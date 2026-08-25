@@ -500,6 +500,21 @@ describe('tailwind 与 className 守卫', () => {
     ])).toEqual([])
   })
 
+  it('区分 for 系列 initializer 的块级与 var 函数级绑定', () => {
+    const diagnostics = readClassNameDiagnostics([
+      fixture(
+        'class-name/loop-binding-scope.fixture',
+        'loop-binding-scope.tsx',
+      ),
+    ])
+
+    expect(diagnostics.map(item => item.kind)).toEqual([
+      'single-use-class-constant',
+      'root-only-class-names',
+      'root-only-class-names',
+    ])
+  })
+
   it('按相对模块路径解析跨文件同名样式常量', () => {
     const diagnostics = readClassNameDiagnostics([
       fixture(
@@ -526,6 +541,36 @@ describe('tailwind 与 className 守卫', () => {
         'ROOT_CLASS_NAME',
         'single-use-class-constant',
       ]])
+  })
+
+  it('沿显式 named re-export 链解析真正模块级样式导出', () => {
+    /** 读取 barrel 场景 fixture */
+    const readBarrelFixture = (name: string, fileName: string) => fixture(
+      `class-name/barrel-${name}.fixture`,
+      `modules/barrel/${fileName}`,
+    )
+    const diagnostics = readClassNameDiagnostics([
+      readBarrelFixture('styles-a', 'styles-a.ts'),
+      readBarrelFixture('styles-b', 'styles-b.ts'),
+      readBarrelFixture('local', 'local.ts'),
+      readBarrelFixture('index', 'index.ts'),
+      readBarrelFixture('consumer', 'consumer.tsx'),
+      readBarrelFixture('cycle-a', 'cycle-a.ts'),
+      readBarrelFixture('cycle-b', 'cycle-b.ts'),
+      readBarrelFixture('cycle-consumer', 'cycle-consumer.tsx'),
+    ])
+
+    expect(diagnostics.map(item => [
+      item.filePath,
+      item.line,
+      item.target,
+      item.kind,
+    ])).toEqual([[
+      'modules/barrel/styles-a.ts',
+      1,
+      'ROOT_CLASS_NAME',
+      'single-use-class-constant',
+    ]])
   })
 })
 
@@ -587,6 +632,19 @@ describe('测试目录守卫', () => {
     expect(diagnostics.map(item => (
       item.kind === 'cross-domain-import' ? item.targetDomain : item.kind
     ))).toEqual(['protocol', 'request', 'server', 'shared'])
+  })
+
+  it('捕获无替换模板动态导入且不猜测表达式模板', () => {
+    const diagnostics = readTestStructureDiagnostics([
+      fixture(
+        'test-structure/template-module-forms.fixture',
+        'tests/client/template-module-forms.test.ts',
+      ),
+    ])
+
+    expect(diagnostics.map(item => (
+      item.kind === 'cross-domain-import' ? item.targetDomain : item.kind
+    ))).toEqual(['protocol', 'shared'])
   })
 
   it('接受 2000 行测试与同领域、support 和生产源码相对导入', () => {

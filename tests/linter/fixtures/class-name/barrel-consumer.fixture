@@ -1,0 +1,14 @@
+import {
+  ROOT_CLASS_NAME,
+  SECOND_ROOT_CLASS_NAME,
+} from './index'
+
+export function BarrelConsumer() {
+  return (
+    <>
+      <div className={ROOT_CLASS_NAME} />
+      <div className={SECOND_ROOT_CLASS_NAME} />
+      <div className={SECOND_ROOT_CLASS_NAME} />
+    </>
+  )
+}

@@ -39,7 +39,7 @@ export function readModuleSpecifier(node: ts.Node) {
   if (
     (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
     && node.moduleSpecifier
-    && ts.isStringLiteral(node.moduleSpecifier)
+    && ts.isStringLiteralLike(node.moduleSpecifier)
   ) {
     return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
   }
@@ -49,7 +49,7 @@ export function readModuleSpecifier(node: ts.Node) {
 
     if (
       ts.isExternalModuleReference(reference)
-      && ts.isStringLiteral(reference.expression)
+      && ts.isStringLiteralLike(reference.expression)
     ) {
       return { node: reference.expression, value: reference.expression.text }
     }
@@ -58,7 +58,7 @@ export function readModuleSpecifier(node: ts.Node) {
   if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
     const literal = node.argument.literal
 
-    if (ts.isStringLiteral(literal))
+    if (ts.isStringLiteralLike(literal))
       return { node: literal, value: literal.text }
   }
 
@@ -69,7 +69,7 @@ export function readModuleSpecifier(node: ts.Node) {
     || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
   const [specifier] = node.arguments
 
-  if (isModuleCall && specifier && ts.isStringLiteral(specifier))
+  if (isModuleCall && specifier && ts.isStringLiteralLike(specifier))
     return { node: specifier, value: specifier.text }
 }
 

@@ -1,0 +1,7 @@
+export const ROOT_CLASS_NAME = 'flex items-center'
+
+export function readNestedStyles() {
+  const ROOT_CLASS_NAME = 'grid gap-sm'
+
+  return [ROOT_CLASS_NAME, ROOT_CLASS_NAME]
+}

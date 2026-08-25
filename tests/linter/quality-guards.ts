@@ -2,6 +2,7 @@ import type { TypeScriptSource } from './quality-guard-source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
+import { createClassNameModuleResolver } from './class-name-modules'
 import {
   comparePositionedDiagnostics,
   isTanStackRoutesDirectory,
@@ -906,10 +907,6 @@ function readClassNameLayoutDiagnostics(
     ts.VariableDeclaration,
     ClassNameConstantRecord
   >()
-  const constantsByFilePath = new Map<
-    string,
-    Map<string, ClassNameConstantRecord>
-  >()
 
   for (const { filePath, sourceFile } of parsedSources) {
     const declarations = new Map<ts.Node, Map<string, ClassNameBinding[]>>()
@@ -958,16 +955,8 @@ function readClassNameLayoutDiagnostics(
             references: 0,
             sourceFile,
           }
-          const normalizedFilePath = path.posix.normalize(toPosixPath(filePath))
-          const fileConstants = constantsByFilePath.get(normalizedFilePath) ?? new Map<
-            string,
-            ClassNameConstantRecord
-          >()
-
           constants.push(record)
           constantByDeclaration.set(node, record)
-          fileConstants.set(name, record)
-          constantsByFilePath.set(normalizedFilePath, fileConstants)
         }
       }
       else if (ts.isParameter(node)) {
@@ -1005,77 +994,14 @@ function readClassNameLayoutDiagnostics(
     }
   }
 
-  /** 按导入文件路径解析相对模块中的样式常量声明 */
-  const resolveImportedModule = (filePath: string, specifier: string) => {
-    const sourcePath = path.posix.normalize(toPosixPath(filePath))
-    const targetPath = path.posix.normalize(path.posix.join(
-      path.posix.dirname(sourcePath),
-      specifier,
-    ))
-    const runtimeExtension = targetPath.match(/\.(?:c|m)?jsx?$/)?.[0]
-    const sourceBase = runtimeExtension
-      ? targetPath.slice(0, -runtimeExtension.length)
-      : targetPath
-    const candidates = [
-      targetPath,
-      `${sourceBase}.ts`,
-      `${sourceBase}.tsx`,
-      `${sourceBase}.mts`,
-      `${sourceBase}.cts`,
-      `${targetPath}/index.ts`,
-      `${targetPath}/index.tsx`,
-      `${targetPath}/index.mts`,
-      `${targetPath}/index.cts`,
-    ]
-
-    for (const candidate of candidates) {
-      const constants = constantsByFilePath.get(candidate)
-
-      if (constants)
-        return constants
-    }
-  }
-  /** 解析当前源码的相对模块命名导入 */
-  const readImportedConstants = (
-    filePath: string,
-    sourceFile: ts.SourceFile,
-  ) => {
-    const imported = new Map<string, ClassNameConstantRecord>()
-
-    for (const statement of sourceFile.statements) {
-      if (
-        !ts.isImportDeclaration(statement)
-        || !statement.importClause?.namedBindings
-        || !ts.isNamedImports(statement.importClause.namedBindings)
-        || !ts.isStringLiteral(statement.moduleSpecifier)
-        || !statement.moduleSpecifier.text.startsWith('.')
-      ) {
-        continue
-      }
-
-      const moduleConstants = resolveImportedModule(
-        filePath,
-        statement.moduleSpecifier.text,
-      )
-
-      if (!moduleConstants)
-        continue
-
-      for (const specifier of statement.importClause.namedBindings.elements) {
-        const sourceName = specifier.propertyName?.text ?? specifier.name.text
-        const record = moduleConstants.get(sourceName)
-
-        if (record)
-          imported.set(specifier.name.text, record)
-      }
-    }
-
-    return imported
-  }
+  const readImportedConstants = createClassNameModuleResolver(
+    parsedSources,
+    constantByDeclaration,
+  )
 
   for (const { filePath, sourceFile } of parsedSources) {
     const declarations = declarationsBySourceFile.get(sourceFile)!
-    const imported = readImportedConstants(filePath, sourceFile)
+    const imported = readImportedConstants(filePath)
     /** 统计真实值引用，声明以及导入导出名称不计为消费点 */
     const countReferences = (node: ts.Node) => {
       if (ts.isIdentifier(node) && isIdentifierReference(node)) {
@@ -1370,13 +1296,44 @@ function readParameterScope(parameter: ts.ParameterDeclaration) {
 function readBindingScope(declaration: ts.VariableDeclaration) {
   const parent = declaration.parent
 
-  return ts.isCatchClause(parent)
-    ? parent.block
-    : readLexicalScope(declaration)
+  if (ts.isCatchClause(parent))
+    return parent.block
+
+  if (ts.isVariableDeclarationList(parent)) {
+    const owner = parent.parent
+    const isBlockScoped = (parent.flags & ts.NodeFlags.BlockScoped) !== 0
+
+    if (
+      isBlockScoped
+      && (
+        ts.isForStatement(owner)
+        || ts.isForInStatement(owner)
+        || ts.isForOfStatement(owner)
+      )
+    ) {
+      return owner
+    }
+
+    if (!isBlockScoped) {
+      let scope: ts.Node = owner
+
+      while (!ts.isSourceFile(scope) && !isFunctionLikeScope(scope))
+        scope = scope.parent
+
+      return scope
+    }
+  }
+
+  return readLexicalScope(declaration)
 }
 
 function isClassNameScope(node: ts.Node) {
-  return ts.isSourceFile(node) || ts.isBlock(node) || isFunctionLikeScope(node)
+  return ts.isSourceFile(node)
+    || ts.isBlock(node)
+    || ts.isForStatement(node)
+    || ts.isForInStatement(node)
+    || ts.isForOfStatement(node)
+    || isFunctionLikeScope(node)
 }
 
 function isFunctionLikeScope(node: ts.Node): node is ts.FunctionLikeDeclaration {

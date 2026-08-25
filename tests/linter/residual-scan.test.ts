@@ -68,6 +68,16 @@ it('源码残留扫描允许生态插件包与普通复合技术词', () => {
   }])).toEqual([])
 })
 
+it('源码残留扫描识别无替换模板说明符且忽略表达式模板', () => {
+  const diagnostics = readSourceResidualDiagnostics([{
+    filePath: 'projects/client/src/template-modules.ts',
+    source: readFixture('template-modules.fixture'),
+  }])
+
+  expect(diagnostics.filter(item => item.kind === 'module').map(item => item.value))
+    .toEqual(['@socilab/plugin', '../../runtime/index'])
+})
+
 it('manifest 残留扫描分析依赖键而非原始 substring', () => {
   expect(readManifestResidualDiagnostics(
     'fixtures/invalid/package.json',

@@ -690,7 +690,9 @@ export function readClassNameDiagnostics(
 
       if (ts.isObjectLiteralExpression(current)) {
         for (const property of current.properties) {
-          if (ts.isPropertyAssignment(property) && ts.isComputedPropertyName(property.name))
+          if (ts.isSpreadAssignment(property))
+            inspect(property.expression, activeDeclarations)
+          else if (ts.isPropertyAssignment(property) && ts.isComputedPropertyName(property.name))
             inspect(property.name.expression, activeDeclarations)
         }
         return

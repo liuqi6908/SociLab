@@ -261,6 +261,7 @@ describe('tailwind 与 className 守卫', () => {
       ['array-composition', 11],
       ['string-concatenation', 12],
       ['string-concatenation', 13],
+      ['string-concatenation', 14],
     ])
   })
 

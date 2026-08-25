@@ -11,6 +11,7 @@ export function InvalidClassName({ active, color }: { active: boolean; color: st
       <div className={cn(['block', active && 'gap-2'].filter(Boolean).join(' '))} />
       <div className={cn({ ['border-' + color]: active })} />
       <div className={cn(...['bg-' + color])} />
+      <div className={cn({ ...{ ['ring-' + color]: active } })} />
     </>
   )
 }

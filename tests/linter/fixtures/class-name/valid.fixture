@@ -11,6 +11,7 @@ export function ValidClassName({ active, color }: { active: boolean; color: stri
         active ? 'text-foreground' : 'text-muted',
         { flex: active },
         ['grid', active && 'gap-4', active ? 'p-2' : 'p-4'],
+        { ...{ flex: active }, ...{ grid: true } },
       )}
     />
   )

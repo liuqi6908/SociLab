@@ -3,6 +3,11 @@ import path from 'node:path'
 import * as ts from 'typescript'
 import {
   parseTypeScriptSources,
+  positionOf,
+  readModuleSpecifier,
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+  repositoryRoot,
   type TypeScriptSource,
 } from './source'
 
@@ -24,7 +29,6 @@ export interface ResidualDiagnostic {
 }
 
 /** -------------------- 常量 -------------------- */
-const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 const forbiddenIdentifierNames = new Set([
   'Agent',
   'Electron',
@@ -54,23 +58,6 @@ const rootConfigNames = new Set([
   '.npmrc',
   'pnpm-workspace.yaml',
   'turbo.json',
-])
-const repositoryIgnoredDirNames = new Set([
-  '.cache',
-  '.codegraph',
-  '.git',
-  '.pnpm-store',
-  '.tanstack',
-  '.tmp',
-  '.turbo',
-  'build',
-  'coverage',
-  'dist',
-  'node_modules',
-  'tmp',
-])
-const repositoryIgnoredFileNames = new Set([
-  'routeTree.gen.ts',
 ])
 
 /** -------------------- 源码扫描 -------------------- */
@@ -395,15 +382,6 @@ function toPosixPath(filePath: string) {
   return filePath.split(path.sep).join('/')
 }
 
-function positionOf(sourceFile: ts.SourceFile, node: ts.Node) {
-  const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-
-  return {
-    column: position.character + 1,
-    line: position.line + 1,
-  }
-}
-
 function positionOfText(source: string, offset: number) {
   const lines = source.slice(0, offset).split('\n')
 
@@ -411,44 +389,4 @@ function positionOfText(source: string, offset: number) {
     column: lines.at(-1)!.length + 1,
     line: lines.length,
   }
-}
-
-function readModuleSpecifier(node: ts.Node) {
-  if (
-    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
-    && node.moduleSpecifier
-    && ts.isStringLiteralLike(node.moduleSpecifier)
-  ) {
-    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
-  }
-
-  if (ts.isImportEqualsDeclaration(node)) {
-    const reference = node.moduleReference
-
-    if (
-      ts.isExternalModuleReference(reference)
-      && reference.expression
-      && ts.isStringLiteralLike(reference.expression)
-    ) {
-      return { node: reference.expression, value: reference.expression.text }
-    }
-  }
-
-  if (
-    ts.isImportTypeNode(node)
-    && ts.isLiteralTypeNode(node.argument)
-    && ts.isStringLiteralLike(node.argument.literal)
-  ) {
-    return { node: node.argument.literal, value: node.argument.literal.text }
-  }
-
-  if (!ts.isCallExpression(node))
-    return
-
-  const isModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
-    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
-  const [specifier] = node.arguments
-
-  if (isModuleCall && specifier && ts.isStringLiteralLike(specifier))
-    return { node: specifier, value: specifier.text }
 }

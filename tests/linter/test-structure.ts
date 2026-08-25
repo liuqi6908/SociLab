@@ -1,7 +1,7 @@
 import path from 'node:path'
-import * as ts from 'typescript'
 import {
   parseTypeScriptSources,
+  readModuleSpecifier,
   type TypeScriptSource,
 } from './source'
 
@@ -115,49 +115,6 @@ export function assertTestStructure(sources: readonly TypeScriptSource[]) {
 }
 
 /** -------------------- 内部函数 -------------------- */
-/**
- * 读取静态可判定的 ESM、类型导入与 CommonJS 模块说明符
- */
-function readModuleSpecifier(node: ts.Node) {
-  if (
-    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
-    && node.moduleSpecifier
-    && ts.isStringLiteralLike(node.moduleSpecifier)
-  ) {
-    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
-  }
-
-  if (ts.isImportEqualsDeclaration(node)) {
-    const reference = node.moduleReference
-
-    if (
-      ts.isExternalModuleReference(reference)
-      && reference.expression
-      && ts.isStringLiteralLike(reference.expression)
-    ) {
-      return { node: reference.expression, value: reference.expression.text }
-    }
-  }
-
-  if (
-    ts.isImportTypeNode(node)
-    && ts.isLiteralTypeNode(node.argument)
-    && ts.isStringLiteralLike(node.argument.literal)
-  ) {
-    return { node: node.argument.literal, value: node.argument.literal.text }
-  }
-
-  if (!ts.isCallExpression(node))
-    return
-
-  const isModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
-    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
-  const [specifier] = node.arguments
-
-  if (isModuleCall && specifier && ts.isStringLiteralLike(specifier))
-    return { node: specifier, value: specifier.text }
-}
-
 /**
  * 将结构诊断转换成稳定文案
  */

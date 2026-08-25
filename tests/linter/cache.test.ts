@@ -38,9 +38,20 @@ it('缓存输入覆盖源码、两端构建路由、共享样式与工程配置�
       '.npmrc': 'engine-strict=true\n',
       'eslint.config.mjs': 'export default []\n',
       'package.json': '{}',
+      'packages/api/.cache/ignored.ts': 'export const ignored = true\n',
+      'packages/api/.codegraph/ignored.ts': 'export const ignored = true\n',
+      'packages/api/.git/ignored.ts': 'export const ignored = true\n',
+      'packages/api/.pnpm-store/ignored.ts': 'export const ignored = true\n',
+      'packages/api/.tanstack/ignored.ts': 'export const ignored = true\n',
+      'packages/api/.tmp/ignored.ts': 'export const ignored = true\n',
+      'packages/api/.turbo/ignored.ts': 'export const ignored = true\n',
+      'packages/api/build/ignored.ts': 'export const ignored = true\n',
+      'packages/api/coverage/ignored.ts': 'export const ignored = true\n',
       'packages/api/dist/index.js': 'export const generated = true\n',
+      'packages/api/node_modules/ignored.ts': 'export const ignored = true\n',
       'packages/api/package.json': '{}',
       'packages/api/src/index.ts': 'export const api = true\n',
+      'packages/api/tmp/ignored.ts': 'export const ignored = true\n',
       'packages/shared-ui/src/styles.css': ':root { color: black; }\n',
       'pnpm-lock.yaml': 'lockfileVersion: 9\n',
       'pnpm-workspace.yaml': 'packages: []\n',
@@ -83,15 +94,15 @@ it('缓存输入覆盖源码、两端构建路由、共享样式与工程配置�
 
 it('缓存由输入内容失效且不依赖 mtime 变化', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-'))
-  const configPath = path.join(root, 'tsconfig.json')
+  const sourcePath = path.join(root, 'packages/example/src/index.ts')
   let runCount = 0
 
   try {
     writeRepositoryFiles(root, {
       'package.json': '{}',
-      'tsconfig.json': '{}',
+      'packages/example/src/index.ts': 'export const value = 1\n',
     })
-    const timestamp = statSync(configPath)
+    const timestamp = statSync(sourcePath)
 
     for (let index = 0; index < 2; index++) {
       await runCachedRepositoryGuards(readRepositoryGuardInputs(root), () => {
@@ -100,8 +111,8 @@ it('缓存由输入内容失效且不依赖 mtime 变化', async () => {
     }
     expect(runCount).toBe(1)
 
-    writeFileSync(configPath, '{"compilerOptions":{}}')
-    utimesSync(configPath, timestamp.atime, timestamp.mtime)
+    writeFileSync(sourcePath, 'export const value = 2\n')
+    utimesSync(sourcePath, timestamp.atime, timestamp.mtime)
     await runCachedRepositoryGuards(readRepositoryGuardInputs(root), () => {
       runCount += 1
     }, root)

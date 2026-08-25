@@ -5,6 +5,10 @@ import {
   parseTypeScriptSources,
   readModuleSpecifier,
 } from './quality-guard-source'
+import {
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './repository-paths'
 
 // cspell:ignore qygent Qiyan
 
@@ -45,15 +49,10 @@ const dependencyGroups = [
   'optionalDependencies',
   'peerDependencies',
 ] as const
-const ignoredDirectoryNames = new Set([
-  '.git',
+const residualOnlyIgnoredDirNames = new Set([
   '.superpowers',
-  '.turbo',
-  'build',
-  'dist',
   'docs',
   'fixtures',
-  'node_modules',
 ])
 const rootConfigNames = new Set([
   '.npmrc',
@@ -259,8 +258,13 @@ function readRepositoryManifestPaths(root: string) {
     const absoluteRoot = path.join(root, sourceRoot)
 
     for (const entry of readdirSync(absoluteRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory())
+      if (
+        !entry.isDirectory()
+        || repositoryIgnoredDirNames.has(entry.name)
+        || residualOnlyIgnoredDirNames.has(entry.name)
+      ) {
         continue
+      }
 
       const manifestPath = path.join(absoluteRoot, entry.name, 'package.json')
 
@@ -286,8 +290,15 @@ function readRepositoryResidualFiles(root: string) {
       .sort((left, right) => left.name.localeCompare(right.name))
 
     for (const entry of entries) {
-      if (entry.isDirectory() && ignoredDirectoryNames.has(entry.name))
+      if (
+        entry.isDirectory()
+        && (
+          repositoryIgnoredDirNames.has(entry.name)
+          || residualOnlyIgnoredDirNames.has(entry.name)
+        )
+      ) {
         continue
+      }
 
       const absolutePath = path.join(directoryPath, entry.name)
 
@@ -322,7 +333,7 @@ function readRepositoryResidualFiles(root: string) {
 }
 
 function isRepositoryResidualFile(name: string) {
-  return name !== 'routeTree.gen.ts'
+  return !repositoryIgnoredFileNames.has(name)
     && (
       isTypeScriptSource(name)
       || /\.(?:css|html)$/.test(name)

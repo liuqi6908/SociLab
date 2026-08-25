@@ -11,6 +11,10 @@ import {
   unwrapExpression,
 } from './quality-guard-source'
 import {
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './repository-paths'
+import {
   readCustomHookModuleDiagnostics,
   readModuleDirectoryLayoutDiagnostics,
   readTestStructureDiagnostics,
@@ -196,18 +200,6 @@ interface ReactOutputContext {
 
 /** -------------------- 常量 -------------------- */
 const repositoryRoot = path.resolve(import.meta.dirname, '../..')
-const ignoredDirectoryNames = new Set([
-  '.cache',
-  '.git',
-  '.pnpm-store',
-  '.tanstack',
-  '.tmp',
-  '.turbo',
-  'coverage',
-  'dist',
-  'node_modules',
-  'tmp',
-])
 /** React 与常用工具库的 state / ref Hook */
 const stateHookNames = new Set([
   'useBoolean',
@@ -261,7 +253,7 @@ export function readRepositoryTypeScriptSources(
       .sort((left, right) => left.name.localeCompare(right.name))
 
     for (const entry of entries) {
-      if (entry.isDirectory() && ignoredDirectoryNames.has(entry.name))
+      if (entry.isDirectory() && repositoryIgnoredDirNames.has(entry.name))
         continue
 
       const absolutePath = path.join(directoryPath, entry.name)
@@ -279,7 +271,7 @@ export function readRepositoryTypeScriptSources(
       if (
         !entry.isFile()
         || !/\.tsx?$/.test(entry.name)
-        || entry.name === 'routeTree.gen.ts'
+        || repositoryIgnoredFileNames.has(entry.name)
       ) {
         continue
       }

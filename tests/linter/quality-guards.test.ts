@@ -692,13 +692,24 @@ describe('测试目录守卫', () => {
 })
 
 /** -------------------- 源码枚举 -------------------- */
-it('源码枚举排除生成文件、构建产物、依赖、临时目录与负 fixture', () => {
+it('共享排除边界隔离生成目录并保留受控源码诊断', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-linter-'))
 
   try {
     for (const directoryPath of [
-      'packages/example/src',
+      'packages/example/.cache',
+      'packages/example/.codegraph',
+      'packages/example/.git',
+      'packages/example/.pnpm-store',
+      'packages/example/.tanstack',
+      'packages/example/.tmp',
+      'packages/example/.turbo',
+      'packages/example/build',
+      'packages/example/coverage',
       'packages/example/dist',
+      'packages/example/node_modules',
+      'packages/example/src',
+      'packages/example/tmp',
       'projects/client/node_modules/example',
       'tests/client',
       'tests/linter/fixtures',
@@ -708,21 +719,41 @@ it('源码枚举排除生成文件、构建产物、依赖、临时目录与负 
     }
 
     for (const filePath of [
-      'packages/example/src/index.ts',
-      'packages/example/src/routeTree.gen.ts',
+      'packages/example/.cache/invalid.ts',
+      'packages/example/.codegraph/invalid.ts',
+      'packages/example/.git/invalid.ts',
+      'packages/example/.pnpm-store/invalid.ts',
+      'packages/example/.tanstack/invalid.ts',
+      'packages/example/.tmp/invalid.ts',
+      'packages/example/.turbo/invalid.ts',
+      'packages/example/build/invalid.ts',
+      'packages/example/coverage/invalid.ts',
       'packages/example/dist/output.ts',
+      'packages/example/node_modules/invalid.ts',
+      'packages/example/src/routeTree.gen.ts',
+      'packages/example/tmp/invalid.ts',
       'projects/client/node_modules/example/index.ts',
-      'tests/client/app.test.ts',
       'tests/linter/fixtures/invalid.ts',
       'tests/tmp/generated.ts',
     ]) {
-      writeFileSync(path.join(root, filePath), 'export const value = true\n')
+      writeFileSync(path.join(root, filePath), 'export default true\n')
     }
+    writeFileSync(
+      path.join(root, 'packages/example/src/index.ts'),
+      'export default true\n',
+    )
+    writeFileSync(
+      path.join(root, 'tests/client/app.test.ts'),
+      'export const value = true\n',
+    )
 
     expect(readRepositoryTypeScriptSources(undefined, root).map(item => item.filePath)).toEqual([
       'packages/example/src/index.ts',
       'tests/client/app.test.ts',
     ])
+    expect([
+      ...new Set(scanRepositoryQuality(root).map(item => item.filePath)),
+    ]).toEqual(['packages/example/src/index.ts'])
   }
   finally {
     rmSync(root, { force: true, recursive: true })

@@ -128,6 +128,9 @@ it('真实仓库扫描覆盖配置、样式、HTML、非 fixture 测试与 packa
 
 it('真实仓库扫描排除受控目录并允许计划强制的构建插件包名', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-residual-valid-'))
+  const ignoredManifest = JSON.stringify({
+    dependencies: { '@qygent/shared': 'workspace:*' },
+  })
 
   try {
     writeRepositoryFiles(root, {
@@ -141,9 +144,31 @@ it('真实仓库扫描排除受控目录并允许计划强制的构建插件包�
       }),
       '.superpowers/Runtime.ts': 'export const Runtime = true\n',
       'docs/Agent.md': '# Agent\n',
+      'packages/.cache/package.json': ignoredManifest,
+      'packages/.codegraph/package.json': ignoredManifest,
+      'packages/.git/package.json': ignoredManifest,
+      'packages/.pnpm-store/package.json': ignoredManifest,
+      'packages/.tanstack/package.json': ignoredManifest,
+      'packages/.tmp/package.json': ignoredManifest,
+      'packages/.turbo/package.json': ignoredManifest,
+      'packages/build/package.json': ignoredManifest,
+      'packages/coverage/package.json': ignoredManifest,
+      'packages/dist/package.json': ignoredManifest,
+      'packages/example/.cache/Agent.ts': 'export const Agent = true\n',
+      'packages/example/.codegraph/Agent.ts': 'export const Agent = true\n',
+      'packages/example/.git/Agent.ts': 'export const Agent = true\n',
+      'packages/example/.pnpm-store/Agent.ts': 'export const Agent = true\n',
+      'packages/example/.tanstack/Agent.ts': 'export const Agent = true\n',
+      'packages/example/.tmp/Agent.ts': 'export const Agent = true\n',
+      'packages/example/.turbo/Agent.ts': 'export const Agent = true\n',
       'packages/example/build/Thread.js': 'export const Thread = true\n',
+      'packages/example/coverage/Agent.ts': 'export const Agent = true\n',
+      'packages/example/dist/Agent.ts': 'export const Agent = true\n',
       'packages/example/node_modules/electron/index.js': 'export const Electron = true\n',
       'packages/example/src/routeTree.gen.ts': 'export const Plugin = true\n',
+      'packages/example/tmp/Agent.ts': 'export const Agent = true\n',
+      'packages/node_modules/package.json': ignoredManifest,
+      'packages/tmp/package.json': ignoredManifest,
       'projects/web/dist/Agent.js': 'export const Agent = true\n',
       'tests/linter/fixtures/Plugin.ts': 'export const Plugin = true\n',
       'tests/request/valid.test.ts': 'export const pluginName = "router-plugin"\n',

@@ -9,6 +9,10 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
+import {
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './repository-paths'
 
 /** -------------------- 类型 -------------------- */
 /** 全仓守卫缓存输入 */
@@ -32,21 +36,6 @@ interface RepositoryGuardCache {
 const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 /** 全仓守卫缓存格式版本 */
 const repositoryGuardCacheVersion = 1
-/** 枚举缓存输入时跳过的生成、依赖与缓存目录 */
-const ignoredDirNames = new Set([
-  '.cache',
-  '.codegraph',
-  '.git',
-  '.pnpm-store',
-  '.tanstack',
-  '.tmp',
-  '.turbo',
-  'build',
-  'coverage',
-  'dist',
-  'node_modules',
-  'tmp',
-])
 /** 需要递归枚举的守卫输入根目录 */
 const repositoryGuardInputRoots = ['packages', 'projects', 'tests'] as const
 /** 影响依赖解析、守卫配置与运行环境的根文件 */
@@ -81,7 +70,7 @@ export function readRepositoryGuardInputs(root = repositoryRoot) {
       ))
 
     for (const entry of entries) {
-      if (entry.isDirectory() && ignoredDirNames.has(entry.name))
+      if (entry.isDirectory() && repositoryIgnoredDirNames.has(entry.name))
         continue
 
       const absolutePath = path.join(dir, entry.name)
@@ -98,7 +87,7 @@ export function readRepositoryGuardInputs(root = repositoryRoot) {
 
       if (
         entry.isFile()
-        && entry.name !== 'routeTree.gen.ts'
+        && !repositoryIgnoredFileNames.has(entry.name)
         && isNestedGuardInput(entry.name)
       ) {
         read(absolutePath)

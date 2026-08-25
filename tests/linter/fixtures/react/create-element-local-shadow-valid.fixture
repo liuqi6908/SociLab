@@ -1,0 +1,9 @@
+import * as React from 'react'
+
+const ReadValue = () => {
+  const React = {
+    createElement: (value: string) => value,
+  }
+
+  return React.createElement('value')
+}

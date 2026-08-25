@@ -27,8 +27,10 @@ describe('create request', () => {
       fetch: () => Promise.resolve(new Response(JSON.stringify({
         message: '输入无效',
         code: 'INVALID_INPUT',
-        details: { field: 'email' },
-        issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
+        details: {
+          field: 'email',
+          issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
+        },
       }), { status: 422 })),
     })
 
@@ -37,8 +39,25 @@ describe('create request', () => {
       status: 422,
       message: '输入无效',
       code: 'INVALID_INPUT',
-      details: { field: 'email' },
+      details: {
+        field: 'email',
+        issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
+      },
       issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
+    } satisfies Partial<HttpError>)
+  })
+
+  it('continues to accept legacy top-level validation issues', async () => {
+    const request = createRequest({
+      baseUrl: 'https://api.example.test',
+      fetch: () => Promise.resolve(new Response(JSON.stringify({
+        message: '输入无效',
+        issues: [{ code: 'legacy', message: '旧格式错误', path: 'name' }],
+      }), { status: 400 })),
+    })
+
+    await expect(request.fetch('/legacy')).rejects.toMatchObject({
+      issues: [{ code: 'legacy', message: '旧格式错误', path: 'name' }],
     } satisfies Partial<HttpError>)
   })
 

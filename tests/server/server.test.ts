@@ -103,6 +103,27 @@ describe('server', () => {
     })
   })
 
+  it('拒绝 RPC 和 OpenAPI 入口的额外对象字段', async () => {
+    const app = createApp()
+    const rpcInput = encodeURIComponent(JSON.stringify({ json: { unexpected: true } }))
+    const rpcResponse = await request(
+      app,
+      `/api/rpc/meta/info?data=${rpcInput}`,
+    )
+    const openApiResponse = await request(app, '/api/openapi/meta/info?unexpected=true')
+
+    expect(rpcResponse.status).toBe(400)
+    await expect(rpcResponse.json()).resolves.toMatchObject({
+      code: 'BAD_REQUEST',
+      details: { issues: expect.any(Array) },
+    })
+    expect(openApiResponse.status).toBe(400)
+    await expect(openApiResponse.json()).resolves.toMatchObject({
+      code: 'BAD_REQUEST',
+      details: { issues: expect.any(Array) },
+    })
+  })
+
   it('将 meta.info 的应用错误转换为公共错误结构', async () => {
     const response = await request(createApp({
       meta: {

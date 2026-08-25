@@ -18,7 +18,7 @@ export const metaInfoSchema = z.object({
 })
 
 /** 无业务参数 procedure 的输入 Schema */
-export const emptyInputSchema = z.object({}).default({})
+export const emptyInputSchema = z.strictObject({}).default({})
 
 /** 公共 API 错误结构 */
 export const apiErrorSchema = z.object({

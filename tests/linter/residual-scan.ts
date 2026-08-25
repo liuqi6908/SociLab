@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
-import { parseTypeScriptSources, readRepositoryTypeScriptSources } from './quality-guards'
+import { parseTypeScriptSources } from './quality-guards'
 
 // cspell:ignore qygent Qiyan
 
@@ -13,7 +13,7 @@ export interface ResidualDiagnostic {
   /** 诊断文件 */
   filePath: string
   /** 残留类型 */
-  kind: 'dependency' | 'identifier' | 'module' | 'product'
+  kind: 'dependency' | 'identifier' | 'module' | 'product' | 'script'
   /** AST 残留诊断行号 */
   line?: number
   /** 精确残留值 */
@@ -42,6 +42,21 @@ const dependencyGroups = [
   'optionalDependencies',
   'peerDependencies',
 ] as const
+const ignoredDirectoryNames = new Set([
+  '.git',
+  '.superpowers',
+  '.turbo',
+  'build',
+  'dist',
+  'docs',
+  'fixtures',
+  'node_modules',
+])
+const rootConfigNames = new Set([
+  '.npmrc',
+  'pnpm-workspace.yaml',
+  'turbo.json',
+])
 
 /** -------------------- 源码扫描 -------------------- */
 /** 通过 TypeScript AST 扫描源码 import、标识符和产品字面量 */
@@ -93,8 +108,51 @@ export function readSourceResidualDiagnostics(
   return uniqueDiagnostics(diagnostics)
 }
 
+/** 扫描 CSS、HTML、环境文件和结构化配置中的精确残留标识 */
+export function readTextResidualDiagnostics(
+  sources: readonly { filePath: string, source: string }[],
+) {
+  const diagnostics: ResidualDiagnostic[] = []
+
+  for (const { filePath, source } of sources) {
+    for (const match of source.matchAll(/@?\w[\w.-]*(?:\/[\w.-]+)*/g)) {
+      const value = match[0]
+
+      if (!isForbiddenModuleSpecifier(value))
+        continue
+
+      diagnostics.push({
+        ...positionOfText(source, match.index),
+        filePath,
+        kind: 'module',
+        value,
+      })
+    }
+
+    for (const match of source.matchAll(/\b(?:Agent|Electron|Plugin|Runtime|Thread)\b/g)) {
+      diagnostics.push({
+        ...positionOfText(source, match.index),
+        filePath,
+        kind: 'identifier',
+        value: match[0],
+      })
+    }
+
+    for (const match of source.matchAll(/\b(?:QiyanAgent|QiyanSoft)\b/g)) {
+      diagnostics.push({
+        ...positionOfText(source, match.index),
+        filePath,
+        kind: 'product',
+        value: match[0],
+      })
+    }
+  }
+
+  return uniqueDiagnostics(diagnostics)
+}
+
 /** -------------------- Manifest 扫描 -------------------- */
-/** 解析 package.json 并仅检查依赖键 */
+/** 解析 package.json 并检查依赖键与脚本命令 */
 export function readManifestResidualDiagnostics(
   filePath: string,
   source: string,
@@ -123,20 +181,34 @@ export function readManifestResidualDiagnostics(
     }
   }
 
-  return diagnostics
+  const scripts = manifest.scripts
+
+  if (isRecord(scripts)) {
+    for (const command of Object.values(scripts)) {
+      if (typeof command !== 'string')
+        continue
+
+      diagnostics.push(...readTextResidualDiagnostics([{ filePath, source: command }]).map(item => ({
+        ...item,
+        column: undefined,
+        kind: 'script' as const,
+        line: undefined,
+      })))
+    }
+  }
+
+  return uniqueDiagnostics(diagnostics)
 }
 
 /** -------------------- 全仓 Gate -------------------- */
 /** 扫描真实仓库生产源码、配置和全部依赖声明 */
 export function scanRepositoryResiduals(root = repositoryRoot) {
-  const sources = readRepositoryTypeScriptSources(['packages', 'projects'], root)
-  const rootConfigs = readdirSync(root, { withFileTypes: true })
-    .filter(entry => entry.isFile() && /\.config\.(?:[cm]?js|ts)$/.test(entry.name))
-    .map(entry => ({
-      filePath: entry.name,
-      source: readFileSync(path.join(root, entry.name), 'utf8'),
-    }))
-  const sourceDiagnostics = readSourceResidualDiagnostics([...sources, ...rootConfigs])
+  const files = readRepositoryResidualFiles(root)
+  const sourceDiagnostics = files.flatMap(file => (
+    isTypeScriptSource(file.filePath)
+      ? readSourceResidualDiagnostics([file])
+      : readTextResidualDiagnostics([file])
+  ))
   const manifestDiagnostics = readRepositoryManifestPaths(root).flatMap(filePath => (
     readManifestResidualDiagnostics(
       toPosixPath(path.relative(root, filePath)),
@@ -236,6 +308,72 @@ function readRepositoryManifestPaths(root: string) {
   return paths
 }
 
+/** 按明确白名单枚举生产源码、非 fixture 测试与工程配置 */
+function readRepositoryResidualFiles(root: string) {
+  const files: { filePath: string, source: string }[] = []
+
+  const collect = (directoryPath: string) => {
+    const entries = readdirSync(directoryPath, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && ignoredDirectoryNames.has(entry.name))
+        continue
+
+      const absolutePath = path.join(directoryPath, entry.name)
+
+      if (entry.isDirectory()) {
+        collect(absolutePath)
+        continue
+      }
+
+      if (!entry.isFile() || !isRepositoryResidualFile(entry.name))
+        continue
+
+      files.push({
+        filePath: toPosixPath(path.relative(root, absolutePath)),
+        source: readFileSync(absolutePath, 'utf8'),
+      })
+    }
+  }
+
+  for (const sourceRoot of ['packages', 'projects', 'tests'])
+    collect(path.join(root, sourceRoot))
+
+  for (const entry of readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isFile() && isRootResidualConfig(entry.name))
+    .sort((left, right) => left.name.localeCompare(right.name))) {
+    files.push({
+      filePath: entry.name,
+      source: readFileSync(path.join(root, entry.name), 'utf8'),
+    })
+  }
+
+  return files
+}
+
+function isRepositoryResidualFile(name: string) {
+  return name !== 'routeTree.gen.ts'
+    && (
+      isTypeScriptSource(name)
+      || /\.(?:css|html)$/.test(name)
+      || /^\.env(?:\..+)?$/.test(name)
+      || /^tsconfig(?:\.[^.]+)?\.json$/.test(name)
+      || name === '.npmrc'
+    )
+}
+
+function isRootResidualConfig(name: string) {
+  return rootConfigNames.has(name)
+    || /^\.env(?:\..+)?$/.test(name)
+    || /^tsconfig(?:\.[^.]+)?\.json$/.test(name)
+    || /\.config\.[cm]?[jt]s$/.test(name)
+}
+
+function isTypeScriptSource(filePath: string) {
+  return /\.[jt]sx?$/.test(filePath) || /\.[cm][jt]s$/.test(filePath)
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -270,5 +408,14 @@ function positionOf(sourceFile: ts.SourceFile, node: ts.Node) {
   return {
     column: position.character + 1,
     line: position.line + 1,
+  }
+}
+
+function positionOfText(source: string, offset: number) {
+  const lines = source.slice(0, offset).split('\n')
+
+  return {
+    column: lines.at(-1)!.length + 1,
+    line: lines.length,
   }
 }

@@ -1,6 +1,6 @@
 import { OpenAPIGenerator } from '@orpc/openapi'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
-import { API_BASE_PATH, API_RPC_PATH, apiContract, ApiError, metaInfoSchema } from '@socilab/api'
+import { API_BASE_PATH, API_RPC_PATH, apiContract, ApiError, emptyInputSchema, metaInfoSchema } from '@socilab/api'
 import { describe, expect, it } from 'vitest'
 
 describe('api contract', () => {
@@ -43,6 +43,26 @@ describe('api contract', () => {
         },
       },
     })
+  })
+
+  it('rejects undeclared meta.info input fields in runtime and OpenAPI contracts', async () => {
+    expect(emptyInputSchema.safeParse({ unexpected: true }).success).toBe(false)
+
+    const converter = new ZodToJsonSchemaConverter()
+    const [, openApiInputSchema] = converter.convert(emptyInputSchema, { strategy: 'input' })
+    const document = await new OpenAPIGenerator({
+      schemaConverters: [converter],
+    }).generate(apiContract, {
+      info: { title: 'SociLab', version: '0.1.0' },
+    })
+    const operation = document.paths?.['/meta/info']?.get
+
+    expect(openApiInputSchema).toMatchObject({
+      additionalProperties: false,
+      type: 'object',
+    })
+    expect(operation?.parameters ?? []).toEqual([])
+    expect(operation?.requestBody).toBeUndefined()
   })
 
   it('preserves status and structured details across HTTP boundaries', () => {

@@ -130,8 +130,9 @@ interface ClassNameBinding {
 }
 
 interface ReactOutputContext {
-  createElementNames: ReadonlySet<string>
-  namespaceNames: ReadonlySet<string>
+  bindingsByScope: ReadonlyMap<ts.Node, ReadonlyMap<string, readonly ts.Node[]>>
+  createElementImports: ReadonlyMap<string, ts.Node>
+  namespaceImports: ReadonlyMap<string, ts.Node>
 }
 
 /** -------------------- 常量 -------------------- */
@@ -1109,19 +1110,36 @@ function isReactOutput(expression: ts.Expression, context: ReactOutputContext): 
 
   return (
     ts.isIdentifier(current.expression)
-    && context.createElementNames.has(current.expression.text)
+    && isReactImportReference(current.expression, context.createElementImports, context)
   )
   || (
     ts.isPropertyAccessExpression(current.expression)
     && ts.isIdentifier(current.expression.expression)
-    && context.namespaceNames.has(current.expression.expression.text)
+    && isReactImportReference(current.expression.expression, context.namespaceImports, context)
     && current.expression.name.text === 'createElement'
   )
 }
 
 function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
-  const createElementNames = new Set<string>()
-  const namespaceNames = new Set<string>()
+  const bindingsByScope = new Map<ts.Node, Map<string, ts.Node[]>>()
+  const createElementImports = new Map<string, ts.Node>()
+  const namespaceImports = new Map<string, ts.Node>()
+  const addBinding = (scope: ts.Node, name: ts.BindingName, declaration: ts.Node) => {
+    if (!ts.isIdentifier(name)) {
+      for (const element of name.elements) {
+        if (!ts.isOmittedExpression(element))
+          addBinding(scope, element.name, element)
+      }
+      return
+    }
+
+    const bindings = bindingsByScope.get(scope) ?? new Map<string, ts.Node[]>()
+    const namedBindings = bindings.get(name.text) ?? []
+
+    namedBindings.push(declaration)
+    bindings.set(name.text, namedBindings)
+    bindingsByScope.set(scope, bindings)
+  }
 
   for (const statement of sourceFile.statements) {
     if (
@@ -1133,23 +1151,67 @@ function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
       continue
     }
 
-    if (statement.importClause.name)
-      namespaceNames.add(statement.importClause.name.text)
+    if (statement.importClause.name) {
+      addBinding(sourceFile, statement.importClause.name, statement.importClause)
+      namespaceImports.set(statement.importClause.name.text, statement.importClause)
+    }
 
     const bindings = statement.importClause.namedBindings
 
     if (bindings && ts.isNamespaceImport(bindings)) {
-      namespaceNames.add(bindings.name.text)
+      addBinding(sourceFile, bindings.name, bindings)
+      namespaceImports.set(bindings.name.text, bindings)
     }
     else if (bindings && ts.isNamedImports(bindings)) {
       for (const element of bindings.elements) {
+        addBinding(sourceFile, element.name, element)
+
         if ((element.propertyName?.text ?? element.name.text) === 'createElement')
-          createElementNames.add(element.name.text)
+          createElementImports.set(element.name.text, element)
       }
     }
   }
 
-  return { createElementNames, namespaceNames }
+  const indexLexicalBindings = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node)) {
+      addBinding(readLexicalScope(node), node.name, node)
+    }
+    else if (ts.isParameter(node)) {
+      const scope = readParameterScope(node)
+
+      if (scope)
+        addBinding(scope, node.name, node)
+    }
+
+    node.forEachChild(indexLexicalBindings)
+  }
+
+  indexLexicalBindings(sourceFile)
+  return { bindingsByScope, createElementImports, namespaceImports }
+}
+
+function isReactImportReference(
+  identifier: ts.Identifier,
+  imports: ReadonlyMap<string, ts.Node>,
+  context: ReactOutputContext,
+) {
+  const importBinding = imports.get(identifier.text)
+
+  if (!importBinding)
+    return false
+
+  let scope: ts.Node | undefined = readLexicalScope(identifier)
+
+  while (scope) {
+    const binding = context.bindingsByScope.get(scope)?.get(identifier.text)?.at(-1)
+
+    if (binding)
+      return binding === importBinding
+
+    scope = readParentLexicalScope(scope)
+  }
+
+  return false
 }
 
 function isArrayClassComposition(expression: ts.Expression) {

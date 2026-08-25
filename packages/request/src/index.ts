@@ -116,8 +116,14 @@ async function toHttpError(response: Response) {
   const body = jsonParse(text)
   const record = isPlainRecord(body) ? body : undefined
   const fallbackMessage = `HTTP ${response.status}`
-  const issues = Array.isArray(record?.issues)
-    ? record.issues.filter(isHttpErrorIssue)
+  const details = isPlainRecord(record?.details) ? record.details : undefined
+  const issueSource = Array.isArray(details?.issues)
+    ? details.issues
+    : Array.isArray(record?.issues)
+      ? record.issues
+      : undefined
+  const issues = issueSource
+    ? issueSource.filter(isHttpErrorIssue)
     : undefined
 
   return new HttpError({
@@ -130,7 +136,7 @@ async function toHttpError(response: Response) {
           ? fallbackMessage
           : text || response.statusText || fallbackMessage,
     code: typeof record?.code === 'string' ? record.code : undefined,
-    details: isPlainRecord(record?.details) ? record.details : undefined,
+    details,
     issues,
   })
 }

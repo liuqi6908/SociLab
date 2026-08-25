@@ -210,6 +210,19 @@ describe('react 组件与 Hook 顺序守卫', () => {
     ])
   })
 
+  it('按词法绑定忽略遮蔽 React createElement 导入的 PascalCase 回调', () => {
+    expect(readReactComponentDiagnostics([
+      fixture(
+        'react/create-element-parameter-shadow-valid.fixture',
+        'create-element-parameter-shadow-valid.tsx',
+      ),
+      fixture(
+        'react/create-element-local-shadow-valid.fixture',
+        'create-element-local-shadow-valid.tsx',
+      ),
+    ])).toEqual([])
+  })
+
   it('捕获 Effect 后的 state Hook 与事件函数后的 memo Hook', () => {
     const diagnostics = readReactHookOrderDiagnostics([
       fixture('react/invalid.fixture', 'fixture.tsx'),

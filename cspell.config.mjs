@@ -5,6 +5,7 @@ export default {
   ignorePaths: [
     'docs/assets/**',
     'pnpm-lock.yaml',
+    '**/routeTree.gen.ts',
   ],
   version: '0.2',
   words: vscodeSettings['cSpell.words'],

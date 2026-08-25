@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@orpc/contract": "1.15.0",
-    "@socilab/shared": "workspace:*",
     "zod": "4.4.3"
   }
 }

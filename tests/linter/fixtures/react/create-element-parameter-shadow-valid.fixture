@@ -1,0 +1,3 @@
+import { createElement } from 'react'
+
+const FormatValue = (createElement: (value: string) => string) => createElement('value')

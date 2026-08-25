@@ -1,6 +1,8 @@
 import { expect, it } from 'vitest'
 import {
   MAX_TEST_FILE_LINES,
+  assertTestStructure,
+  formatTestStructureDiagnostics,
   readTestStructureDiagnostics,
 } from './test-structure'
 
@@ -133,4 +135,32 @@ it('按文本行语义统计以换行结尾的 2000/2001 行测试', () => {
       lineCount: 2_001,
     },
   ])
+})
+
+it('格式化并断言测试结构诊断', () => {
+  const diagnostics = readTestStructureDiagnostics([
+    {
+      filePath: 'tests/client/cross-domain.test.ts',
+      source: 'import { fixture } from \'../protocol/support\'\n',
+    },
+    {
+      filePath: 'tests/client/large.test.ts',
+      source: 'test()\n'.repeat(MAX_TEST_FILE_LINES + 1),
+    },
+  ])
+
+  expect(formatTestStructureDiagnostics(diagnostics)).toBe([
+    '测试目录结构检查失败：',
+    '- tests/client/cross-domain.test.ts: 领域测试不得相对导入 tests/protocol，跨领域共享能力应归入 tests/support',
+    '- tests/client/large.test.ts: 测试文件共 2001 行，超过 2000 行上限',
+  ].join('\n'))
+
+  expect(() => {
+    assertTestStructure([{
+      filePath: 'tests/client/cross-domain.test.ts',
+      source: 'import { fixture } from \'../protocol/support\'\n',
+    }])
+  }).toThrow(
+    '测试目录结构检查失败：\n- tests/client/cross-domain.test.ts: 领域测试不得相对导入 tests/protocol，跨领域共享能力应归入 tests/support',
+  )
 })

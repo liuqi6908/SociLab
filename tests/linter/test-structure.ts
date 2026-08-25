@@ -1,9 +1,9 @@
-import type { TypeScriptSource } from './quality-guard-source'
 import path from 'node:path'
+import * as ts from 'typescript'
 import {
   parseTypeScriptSources,
-  readModuleSpecifier,
-} from './quality-guard-source'
+  type TypeScriptSource,
+} from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 测试文件规模与领域依赖诊断 */
@@ -90,4 +90,80 @@ export function readTestStructureDiagnostics(
     left.filePath.localeCompare(right.filePath)
     || left.kind.localeCompare(right.kind)
   ))
+}
+
+/**
+ * 将测试目录结构诊断格式化为守卫失败信息
+ */
+export function formatTestStructureDiagnostics(
+  diagnostics: readonly TestStructureDiagnostic[],
+) {
+  return [
+    '测试目录结构检查失败：',
+    ...diagnostics.map(item => `- ${item.filePath}: ${describeTestStructureDiagnostic(item)}`),
+  ].join('\n')
+}
+
+/**
+ * 断言测试文件均符合规模与领域依赖约束
+ */
+export function assertTestStructure(sources: readonly TypeScriptSource[]) {
+  const diagnostics = readTestStructureDiagnostics(sources)
+
+  if (diagnostics.length > 0)
+    throw new Error(formatTestStructureDiagnostics(diagnostics))
+}
+
+/** -------------------- 内部函数 -------------------- */
+/**
+ * 读取静态可判定的 ESM、类型导入与 CommonJS 模块说明符
+ */
+function readModuleSpecifier(node: ts.Node) {
+  if (
+    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+    && node.moduleSpecifier
+    && ts.isStringLiteralLike(node.moduleSpecifier)
+  ) {
+    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
+  }
+
+  if (ts.isImportEqualsDeclaration(node)) {
+    const reference = node.moduleReference
+
+    if (
+      ts.isExternalModuleReference(reference)
+      && reference.expression
+      && ts.isStringLiteralLike(reference.expression)
+    ) {
+      return { node: reference.expression, value: reference.expression.text }
+    }
+  }
+
+  if (
+    ts.isImportTypeNode(node)
+    && ts.isLiteralTypeNode(node.argument)
+    && ts.isStringLiteralLike(node.argument.literal)
+  ) {
+    return { node: node.argument.literal, value: node.argument.literal.text }
+  }
+
+  if (!ts.isCallExpression(node))
+    return
+
+  const isModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
+    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
+  const [specifier] = node.arguments
+
+  if (isModuleCall && specifier && ts.isStringLiteralLike(specifier))
+    return { node: specifier, value: specifier.text }
+}
+
+/**
+ * 将结构诊断转换成稳定文案
+ */
+function describeTestStructureDiagnostic(diagnostic: TestStructureDiagnostic) {
+  if (diagnostic.kind === 'cross-domain-import')
+    return `领域测试不得相对导入 tests/${diagnostic.targetDomain}，跨领域共享能力应归入 tests/support`
+
+  return `测试文件共 ${diagnostic.lineCount} 行，超过 ${MAX_TEST_FILE_LINES} 行上限`
 }

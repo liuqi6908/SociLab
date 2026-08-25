@@ -3,12 +3,8 @@ import path from 'node:path'
 import * as ts from 'typescript'
 import {
   parseTypeScriptSources,
-  readModuleSpecifier,
-} from './quality-guard-source'
-import {
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-} from './repository-paths'
+  type TypeScriptSource,
+} from './source'
 
 // cspell:ignore qygent Qiyan
 
@@ -59,11 +55,28 @@ const rootConfigNames = new Set([
   'pnpm-workspace.yaml',
   'turbo.json',
 ])
+const repositoryIgnoredDirNames = new Set([
+  '.cache',
+  '.codegraph',
+  '.git',
+  '.pnpm-store',
+  '.tanstack',
+  '.tmp',
+  '.turbo',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'tmp',
+])
+const repositoryIgnoredFileNames = new Set([
+  'routeTree.gen.ts',
+])
 
 /** -------------------- 源码扫描 -------------------- */
 /** 通过 TypeScript AST 扫描源码 import、标识符和产品字面量 */
 export function readSourceResidualDiagnostics(
-  sources: readonly { filePath: string, source: string }[],
+  sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ResidualDiagnostic[] = []
 
@@ -112,7 +125,7 @@ export function readSourceResidualDiagnostics(
 
 /** 扫描 CSS、HTML、环境文件和结构化配置中的精确残留标识 */
 export function readTextResidualDiagnostics(
-  sources: readonly { filePath: string, source: string }[],
+  sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ResidualDiagnostic[] = []
 
@@ -398,4 +411,44 @@ function positionOfText(source: string, offset: number) {
     column: lines.at(-1)!.length + 1,
     line: lines.length,
   }
+}
+
+function readModuleSpecifier(node: ts.Node) {
+  if (
+    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+    && node.moduleSpecifier
+    && ts.isStringLiteralLike(node.moduleSpecifier)
+  ) {
+    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
+  }
+
+  if (ts.isImportEqualsDeclaration(node)) {
+    const reference = node.moduleReference
+
+    if (
+      ts.isExternalModuleReference(reference)
+      && reference.expression
+      && ts.isStringLiteralLike(reference.expression)
+    ) {
+      return { node: reference.expression, value: reference.expression.text }
+    }
+  }
+
+  if (
+    ts.isImportTypeNode(node)
+    && ts.isLiteralTypeNode(node.argument)
+    && ts.isStringLiteralLike(node.argument.literal)
+  ) {
+    return { node: node.argument.literal, value: node.argument.literal.text }
+  }
+
+  if (!ts.isCallExpression(node))
+    return
+
+  const isModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
+    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
+  const [specifier] = node.arguments
+
+  if (isModuleCall && specifier && ts.isStringLiteralLike(specifier))
+    return { node: specifier, value: specifier.text }
 }

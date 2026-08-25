@@ -10,10 +10,6 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import {
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-} from './repository-paths'
 
 /** -------------------- 类型 -------------------- */
 /** 全仓守卫缓存输入 */
@@ -47,6 +43,23 @@ const rootGuardInputNames = new Set([
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
   'turbo.json',
+])
+const repositoryIgnoredDirNames = new Set([
+  '.cache',
+  '.codegraph',
+  '.git',
+  '.pnpm-store',
+  '.tanstack',
+  '.tmp',
+  '.turbo',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'tmp',
+])
+const repositoryIgnoredFileNames = new Set([
+  'routeTree.gen.ts',
 ])
 /** 并发守卫等待锁释放的轮询间隔 */
 const repositoryGuardLockPollMs = 10

@@ -164,6 +164,27 @@ importers:
 
   packages/shared: {}
 
+  projects/server:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^2.0.12
+        version: 2.1.1(hono@4.13.3)
+      '@orpc/openapi':
+        specifier: 1.15.0
+        version: 1.15.0
+      '@orpc/server':
+        specifier: 1.15.0
+        version: 1.15.0
+      '@orpc/zod':
+        specifier: 1.15.0
+        version: 1.15.0(@orpc/contract@1.15.0)(@orpc/server@1.15.0)(zod@4.4.3)
+      '@socilab/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      hono:
+        specifier: ^4.12.32
+        version: 4.13.3
+
 packages:
 
   '@adobe/css-tools@4.5.0':

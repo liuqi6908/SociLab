@@ -105,6 +105,52 @@ it('源码残留扫描允许生态插件包与普通复合技术词', () => {
   }])).toEqual([])
 })
 
+it('源码残留扫描捕获 import equals、类型导入、require 与动态 import 模块形态', () => {
+  const diagnostics = readSourceResidualDiagnostics([{
+    filePath: 'projects/client/src/module-forms.ts',
+    source: [
+      'import ElectronBuilder = require(\'electron-builder\')',
+      '',
+      'type ElectronRenderer = import(\'electron/renderer\').WebContents',
+      '',
+      'const electronMain = require(\'electron/main\')',
+      'const agentModule = import(\'@socilab/agent\')',
+      'const threadModule = import(\'@socilab/thread\')',
+      '',
+      'export { ElectronBuilder, agentModule, electronMain, threadModule }',
+      'export type { ElectronRenderer }',
+    ].join('\n'),
+  }])
+
+  expect(diagnostics.filter(item => item.kind === 'module').map(item => item.value)).toEqual([
+    'electron-builder',
+    'electron/renderer',
+    'electron/main',
+    '@socilab/agent',
+    '@socilab/thread',
+  ])
+})
+
+it('源码残留扫描允许 electronic 与 @example/electron 等 near-miss 模块', () => {
+  expect(readSourceResidualDiagnostics([{
+    filePath: 'projects/client/src/near-miss.ts',
+    source: [
+      'import electronic from \'electronic\'',
+      'import exampleElectron from \'@example/electron\'',
+      '',
+      'const electronicCommonJs = require(\'electronic\')',
+      'const exampleElectronDynamic = import(\'@example/electron\')',
+      '',
+      'export {',
+      '  electronic,',
+      '  electronicCommonJs,',
+      '  exampleElectron,',
+      '  exampleElectronDynamic,',
+      '}',
+    ].join('\n'),
+  }])).toEqual([])
+})
+
 it('源码残留扫描识别无替换模板说明符且忽略表达式模板', () => {
   const diagnostics = readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/template-modules.ts',

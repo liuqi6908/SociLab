@@ -213,3 +213,33 @@ it('并发命中同一输入时只执行一次并清理锁目录', async () => {
     rmSync(root, { force: true, recursive: true })
   }
 })
+
+it('等待缓存锁超时后抛出可操作错误', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-timeout-'))
+  const lockDir = path.join(root, '.cache/tests/linter/guard.json.lock')
+  let runCount = 0
+
+  try {
+    writeRepositoryFiles(root, {
+      'package.json': '{}',
+      'packages/example/src/index.ts': 'export const value = 1\n',
+    })
+    mkdirSync(lockDir, { recursive: true })
+
+    await expect(runCachedRepositoryGuards(
+      readRepositoryGuardInputs(root),
+      () => {
+        runCount += 1
+      },
+      root,
+      { lockTimeoutMs: 20 },
+    )).rejects.toThrow(
+      `等待全仓守卫缓存锁超时：${lockDir}。若上一轮守卫已异常退出，请删除该锁目录后重试`,
+    )
+
+    expect(runCount).toBe(0)
+  }
+  finally {
+    rmSync(root, { force: true, recursive: true })
+  }
+})

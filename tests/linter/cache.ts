@@ -50,6 +50,8 @@ const rootGuardInputNames = new Set([
 ])
 /** 并发守卫等待锁释放的轮询间隔 */
 const repositoryGuardLockPollMs = 10
+/** 跨进程守卫锁的最长等待时间 */
+const repositoryGuardLockTimeoutMs = 10_000
 /** 当前进程内活跃的同摘要守卫运行 */
 const activeRepositoryGuardRuns = new Map<string, Promise<void>>()
 
@@ -129,6 +131,10 @@ export async function runCachedRepositoryGuards(
   inputs: readonly RepositoryGuardInput[],
   run: () => void | Promise<void>,
   root = repositoryRoot,
+  options?: {
+    /** 等待跨进程缓存锁的最长时间 */
+    lockTimeoutMs?: number
+  },
 ) {
   const cacheDir = path.join(root, '.cache/tests/linter')
   const cachePath = path.join(cacheDir, 'guard.json')
@@ -148,6 +154,7 @@ export async function runCachedRepositoryGuards(
     cachePath,
     digest,
     run,
+    options?.lockTimeoutMs ?? repositoryGuardLockTimeoutMs,
   )
   activeRepositoryGuardRuns.set(runKey, running)
 
@@ -233,12 +240,18 @@ async function runCachedRepositoryGuardsWithLock(
   cachePath: string,
   digest: string,
   run: () => void | Promise<void>,
+  lockTimeoutMs: number,
 ) {
   mkdirSync(cacheDir, { recursive: true })
 
   const lockDir = `${cachePath}.lock`
 
-  await acquireRepositoryGuardLock(lockDir, cachePath, digest)
+  await acquireRepositoryGuardLock(
+    lockDir,
+    cachePath,
+    digest,
+    lockTimeoutMs,
+  )
 
   if (hasMatchingRepositoryGuardCache(cachePath, digest)) {
     releaseRepositoryGuardLock(lockDir)
@@ -268,7 +281,10 @@ async function acquireRepositoryGuardLock(
   lockDir: string,
   cachePath: string,
   digest: string,
+  lockTimeoutMs: number,
 ) {
+  const startedAt = Date.now()
+
   while (true) {
     try {
       mkdirSync(lockDir)
@@ -280,6 +296,12 @@ async function acquireRepositoryGuardLock(
 
       if (hasMatchingRepositoryGuardCache(cachePath, digest))
         return
+
+      if (Date.now() - startedAt >= lockTimeoutMs) {
+        throw new Error(
+          `等待全仓守卫缓存锁超时：${lockDir}。若上一轮守卫已异常退出，请删除该锁目录后重试`,
+        )
+      }
 
       await new Promise(resolve => setTimeout(resolve, repositoryGuardLockPollMs))
     }

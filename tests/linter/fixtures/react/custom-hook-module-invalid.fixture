@@ -1,0 +1,14 @@
+export function useFunctionHook() {
+  return true
+}
+
+export const useArrowHook = () => false
+export const useFactoryHook = createHook()
+
+export function Component() {
+  const useNestedHook = function () {
+    return useFunctionHook()
+  }
+
+  return <span>{useNestedHook()}</span>
+}

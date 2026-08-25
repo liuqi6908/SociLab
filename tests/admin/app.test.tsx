@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { App } from '../../projects/admin/src/app'
-import { Provider, useApi } from '../../projects/admin/src/provider'
+import { Provider } from '../../projects/admin/src/provider'
+import { useApi } from '../../projects/admin/src/provider/hooks'
 import '@testing-library/jest-dom/vitest'
 
 /** -------------------- 测试工具 -------------------- */

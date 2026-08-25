@@ -1,22 +1,30 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import {
   readClassNameDiagnostics,
+  readCustomHookModuleDiagnostics,
   readExplicitExportDiagnostics,
   readInterfaceCommentDiagnostics,
+  readModuleDirectoryLayoutDiagnostics,
   readModuleIndexDiagnostics,
   readPrivateMemberDiagnostics,
   readReactComponentDiagnostics,
   readReactHookOrderDiagnostics,
   readRepositoryTypeScriptSources,
   readTestLocationDiagnostics,
+  readTestStructureDiagnostics,
   scanRepositoryQuality,
 } from './quality-guards'
 
 /** -------------------- 测试夹具 -------------------- */
 const fixtureRoot = path.resolve(import.meta.dirname, 'fixtures')
+/** 仓库根目录 */
+const repositoryRoot = path.resolve(import.meta.dirname, '../..')
+/** React 官方 Hook 调用规则 */
+const rulesOfHooksId = 'react-hooks/rules-of-hooks'
 
 function fixture(name: string, filePath = 'fixture.ts') {
   return {
@@ -147,6 +155,51 @@ describe('模块 index 出口守卫', () => {
   })
 })
 
+/** -------------------- 模块目录布局 -------------------- */
+describe('模块目录布局守卫', () => {
+  it('区分应拍平的单文件子目录与缺少并列职责的多文件子目录', () => {
+    const diagnostics = readModuleDirectoryLayoutDiagnostics([
+      fixture('module-layout/invalid.fixture', 'packages/compact/src/index.ts'),
+      fixture('module-layout/invalid.fixture', 'packages/compact/src/tool/index.tsx'),
+      fixture('module-layout/invalid.fixture', 'packages/skill/src/settings/index.ts'),
+      fixture('module-layout/invalid.fixture', 'packages/skill/src/settings/item/index.tsx'),
+      fixture('module-layout/invalid.fixture', 'packages/skill/src/settings/item/props.ts'),
+    ])
+
+    expect(diagnostics).toEqual([
+      {
+        childFileCount: 1,
+        childPath: 'packages/compact/src/tool',
+        directoryPath: 'packages/compact/src',
+        kind: 'flatten',
+      },
+      {
+        childFileCount: 2,
+        childPath: 'packages/skill/src/settings/item',
+        directoryPath: 'packages/skill/src/settings',
+        kind: 'split',
+      },
+    ])
+  })
+
+  it('接受拍平、多并列模块、唯一 meta 模块骨架与 TanStack routes', () => {
+    expect(readModuleDirectoryLayoutDiagnostics([
+      fixture('module-layout/valid.fixture', 'packages/example/src/index.ts'),
+      fixture('module-layout/valid.fixture', 'packages/example/src/tool.tsx'),
+      fixture('module-layout/valid.fixture', 'packages/example/src/sender/index.tsx'),
+      fixture('module-layout/valid.fixture', 'packages/example/src/feature/index.tsx'),
+      fixture('module-layout/valid.fixture', 'projects/server/src/index.ts'),
+      fixture('module-layout/valid.fixture', 'projects/server/src/app/index.ts'),
+      fixture('module-layout/valid.fixture', 'projects/server/src/infra/index.ts'),
+      fixture('module-layout/valid.fixture', 'projects/server/src/modules/index.ts'),
+      fixture('module-layout/valid.fixture', 'projects/server/src/modules/meta/index.ts'),
+      fixture('module-layout/valid.fixture', 'projects/client/src/main.tsx'),
+      fixture('module-layout/valid.fixture', 'projects/client/src/routes/index.tsx'),
+      fixture('module-layout/valid.fixture', 'projects/client/src/routes/detail/index.tsx'),
+    ])).toEqual([])
+  })
+})
+
 /** -------------------- 类成员 -------------------- */
 describe('private 成员守卫', () => {
   it('捕获字段、方法与构造器 parameter property 的非下划线名称', () => {
@@ -230,6 +283,7 @@ describe('react 组件与 Hook 顺序守卫', () => {
 
     expect(diagnostics.map(item => item.hookName)).toEqual([
       'useState',
+      'handleClick',
       'useMemo',
     ])
   })
@@ -255,6 +309,124 @@ describe('react 组件与 Hook 顺序守卫', () => {
       [17, 19],
       [18, 20],
     ])
+  })
+
+  it('捕获 useEffectEvent 阶段、命令式屏障与递归 wrapper 内逆序', () => {
+    const diagnostics = readReactHookOrderDiagnostics([
+      fixture('react/hook-general-invalid.fixture', 'hook-general-invalid.tsx'),
+    ])
+
+    expect(diagnostics.map(item => [item.scope, item.hookName, item.kind])).toEqual([
+      ['BrokenEffectEvent', 'useEffectEvent', 'stage-order'],
+      ['BrokenBarrier', 'useState', 'imperative-barrier'],
+      ['BrokenNested', 'useMemo', 'stage-order'],
+      ['BrokenEventAfterEffect', 'handleClick', 'stage-order'],
+      ['BrokenDefault', 'useState', 'stage-order'],
+    ])
+  })
+
+  it('接受 wrapper 内 common、state、memo、事件、useEffectEvent 与 Effect 顺序', () => {
+    expect(readReactHookOrderDiagnostics([
+      fixture('react/hook-general-valid.fixture', 'hook-general-valid.tsx'),
+    ])).toEqual([])
+  })
+})
+
+it('react 源码由官方 rules-of-hooks 全仓检查且不存在漏检', async () => {
+  const eslint = new ESLint({
+    allowInlineConfig: false,
+    cache: false,
+    cwd: repositoryRoot,
+    ignore: false,
+    overrideConfig: {
+      languageOptions: {
+        parserOptions: { projectService: false },
+      },
+    },
+    ruleFilter: ({ ruleId }) => ruleId === rulesOfHooksId,
+  })
+  const invalidSource = `
+    import { useState } from 'react'
+    export function Broken({ visible }: { visible: boolean }) {
+      if (!visible) return null
+      const [value] = useState(0)
+      return <span>{value}</span>
+    }
+  `
+
+  for (const filePath of [
+    'packages/shared-ui/src/linter-fixture.tsx',
+    'projects/admin/src/linter-fixture.tsx',
+    'projects/client/src/linter-fixture.tsx',
+  ]) {
+    const [result] = await eslint.lintText(invalidSource, {
+      filePath: path.resolve(repositoryRoot, filePath),
+      warnIgnored: false,
+    })
+
+    expect(result?.messages.some(message => (
+      message.ruleId === rulesOfHooksId
+    ))).toBe(true)
+  }
+
+  const sources = readRepositoryTypeScriptSources(['packages', 'projects'])
+    .filter(source => !source.filePath.endsWith('.d.ts'))
+  const results = await eslint.lintFiles(sources.map(source => (
+    path.resolve(repositoryRoot, source.filePath)
+  )))
+  const checkedFiles = new Set<string>()
+  const diagnostics: string[] = []
+
+  for (const result of results) {
+    const filePath = path.relative(repositoryRoot, result.filePath)
+      .split(path.sep)
+      .join('/')
+
+    checkedFiles.add(filePath)
+    diagnostics.push(...result.messages
+      .filter(message => message.fatal || message.ruleId === rulesOfHooksId)
+      .map(message => (
+        `${filePath}:${message.line}:${message.column} ${message.message}`
+      )))
+  }
+
+  for (const source of sources) {
+    if (!checkedFiles.has(source.filePath))
+      diagnostics.push(`${source.filePath}: ESLint 未检查该源码`)
+  }
+
+  expect(sources.length).toBeGreaterThan(0)
+  expect(diagnostics).toEqual([])
+}, 30_000)
+
+/** -------------------- 自定义 Hook 模块 -------------------- */
+describe('自定义 Hook 模块守卫', () => {
+  it('捕获 TSX 模块中的函数、变量与嵌套 Hook 实现', () => {
+    const diagnostics = readCustomHookModuleDiagnostics([
+      fixture(
+        'react/custom-hook-module-invalid.fixture',
+        'custom-hook-module-invalid.tsx',
+      ),
+    ])
+
+    expect(diagnostics.map(item => item.hookName)).toEqual([
+      'useFunctionHook',
+      'useArrowHook',
+      'useNestedHook',
+    ])
+  })
+
+  it('接受 TSX 中的 Hook 调用与非 TSX 模块中的 Hook 实现', () => {
+    expect(readCustomHookModuleDiagnostics([
+      fixture(
+        'react/custom-hook-module-valid.fixture',
+        'custom-hook-module-valid.tsx',
+      ),
+      fixture(
+        'react/custom-hook-module-hooks-valid.fixture',
+        'hooks.ts',
+      ),
+    ])).toEqual([])
   })
 })
 
@@ -293,6 +465,31 @@ describe('tailwind 与 className 守卫', () => {
       fixture('class-name/shadowing-invalid.fixture', 'shadowing-invalid.tsx'),
     ]).map(item => item.kind)).toEqual(['string-concatenation'])
   })
+
+  it('捕获静态布局、失衡 cn、单槽 classNames 与单消费样式常量', () => {
+    const diagnostics = readClassNameDiagnostics([
+      fixture('class-name/layout-invalid.fixture', 'layout-invalid.tsx'),
+      fixture('class-name/layout-styles.fixture', 'layout-styles.ts'),
+    ])
+
+    expect(diagnostics.map(item => [item.filePath, item.target, item.kind])).toEqual([
+      ['layout-invalid.tsx', 'PANEL_CLASS_NAME', 'long-static-class'],
+      ['layout-invalid.tsx', 'LOCAL_CLASS_NAMES', 'single-use-class-constant'],
+      ['layout-invalid.tsx', 'classNames', 'root-only-class-names'],
+      ['layout-invalid.tsx', 'classNames', 'root-only-class-names'],
+      ['layout-invalid.tsx', 'className', 'long-cn-single-line'],
+      ['layout-invalid.tsx', 'className', 'short-static-cn'],
+      ['layout-invalid.tsx', 'className', 'inline-multiline-class-attribute'],
+      ['layout-invalid.tsx', 'className', 'unbalanced-cn-segments'],
+      ['layout-styles.ts', 'EXPORTED_CLASS_NAMES', 'single-use-class-constant'],
+    ])
+  })
+
+  it('接受短静态布局、均衡 cn、多槽 classNames 与复用样式常量', () => {
+    expect(readClassNameDiagnostics([
+      fixture('class-name/layout-valid.fixture', 'layout-valid.tsx'),
+    ])).toEqual([])
+  })
 })
 
 /** -------------------- 测试位置 -------------------- */
@@ -313,6 +510,45 @@ describe('测试目录守卫', () => {
   it('接受 tests 领域目录内测试', () => {
     expect(readTestLocationDiagnostics([
       fixture('test-structure/valid.fixture', 'tests/client/app.test.ts'),
+    ])).toEqual([])
+  })
+
+  it('捕获超过 2000 行的测试文件与跨领域相对导入', () => {
+    const diagnostics = readTestStructureDiagnostics([
+      {
+        filePath: 'tests/client/large.test.ts',
+        source: Array.from({ length: 2_001 }).fill('test()').join('\n'),
+      },
+      fixture(
+        'test-structure/cross-domain-invalid.fixture',
+        'tests/client/cross-domain.test.ts',
+      ),
+    ])
+
+    expect(diagnostics).toEqual([
+      {
+        filePath: 'tests/client/cross-domain.test.ts',
+        kind: 'cross-domain-import',
+        targetDomain: 'protocol',
+      },
+      {
+        filePath: 'tests/client/large.test.ts',
+        kind: 'file-too-large',
+        lineCount: 2_001,
+      },
+    ])
+  })
+
+  it('接受 2000 行测试与同领域、support 和生产源码相对导入', () => {
+    expect(readTestStructureDiagnostics([
+      {
+        filePath: 'tests/client/limit.test.ts',
+        source: Array.from({ length: 2_000 }).fill('test()').join('\n'),
+      },
+      fixture(
+        'test-structure/imports-valid.fixture',
+        'tests/client/imports.test.ts',
+      ),
     ])).toEqual([])
   })
 })

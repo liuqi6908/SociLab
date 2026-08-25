@@ -1,0 +1,11 @@
+export const ValidNested = memo(forwardRef((_props, _ref) => {
+  const route = useRoute()
+  const [value] = useState(0)
+  const memoized = useMemo(() => value + 1, [value])
+  const mutation = useMutation({ mutationFn: async () => memoized })
+  const handleClick = () => mutation.mutate()
+  const sync = useEffectEvent(() => handleClick())
+
+  useEffect(() => sync(), [sync])
+  return <button onClick={handleClick} data-route={route}>{memoized}</button>
+}))

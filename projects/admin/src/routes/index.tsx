@@ -1,6 +1,7 @@
+import { cn } from '@socilab/shared-ui'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useApi } from '../provider'
+import { useApi } from '../provider/hooks'
 
 /** -------------------- 路由 -------------------- */
 export const Route = createFileRoute('/')({ component: IndexRoute })
@@ -12,7 +13,12 @@ function IndexRoute() {
   const info = useQuery(api.meta.info.queryOptions())
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+    <main
+      className={cn(
+        'flex min-h-screen items-center justify-center',
+        'bg-background px-6 text-foreground',
+      )}
+    >
       <section aria-label="服务连接状态" className="w-full max-w-xl bg-surface px-8 py-10">
         <h1 className="text-3xl font-semibold tracking-tight">SociLab 管理端</h1>
         {info.isPending && <p className="mt-4 text-sm" role="status">正在连接服务</p>}

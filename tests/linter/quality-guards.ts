@@ -1,16 +1,34 @@
+import type { TypeScriptSource } from './quality-guard-source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
+import {
+  comparePositionedDiagnostics,
+  isTanStackRoutesDirectory,
+  parseTypeScriptSources,
+  positionOf,
+  unwrapExpression,
+} from './quality-guard-source'
+import {
+  readCustomHookModuleDiagnostics,
+  readModuleDirectoryLayoutDiagnostics,
+  readTestStructureDiagnostics,
+} from './structure-guards'
+
+export { parseTypeScriptSources }
+export type { TypeScriptSource } from './quality-guard-source'
+export {
+  readCustomHookModuleDiagnostics,
+  readModuleDirectoryLayoutDiagnostics,
+  readTestStructureDiagnostics,
+}
+export type {
+  CustomHookModuleDiagnostic,
+  ModuleDirectoryLayoutDiagnostic,
+  TestStructureDiagnostic,
+} from './structure-guards'
 
 /** -------------------- 类型 -------------------- */
-/** 待守卫检查的 TypeScript 源码 */
-export interface TypeScriptSource {
-  /** 仓库相对路径 */
-  filePath: string
-  /** 源码文本 */
-  source: string
-}
-
 /** 显式导出诊断 */
 export interface ExplicitExportDiagnostic {
   /** 诊断列号 */
@@ -71,12 +89,16 @@ export interface ReactComponentDiagnostic {
 
 /** React Hook 阶段顺序诊断 */
 export interface ReactHookOrderDiagnostic {
+  /** 命令式屏障说明 */
+  barrier?: string
   /** 诊断列号 */
   column: number
   /** 诊断文件 */
   filePath: string
   /** 逆序 Hook 名称 */
   hookName: string
+  /** 违规类型 */
+  kind: 'imperative-barrier' | 'stage-order'
   /** 诊断行号 */
   line: number
   /** 所属组件或 Hook */
@@ -90,9 +112,21 @@ export interface ClassNameDiagnostic {
   /** 诊断文件 */
   filePath: string
   /** 违规类型 */
-  kind: 'array-composition' | 'dynamic-template' | 'string-concatenation'
+  kind:
+    | 'array-composition'
+    | 'dynamic-template'
+    | 'inline-multiline-class-attribute'
+    | 'long-cn-single-line'
+    | 'long-static-class'
+    | 'root-only-class-names'
+    | 'short-static-cn'
+    | 'single-use-class-constant'
+    | 'string-concatenation'
+    | 'unbalanced-cn-segments'
   /** 诊断行号 */
   line: number
+  /** className、classNames 或样式常量名称 */
+  target?: string
 }
 
 /** 测试文件位置诊断 */
@@ -113,19 +147,43 @@ export interface RepositoryQualityDiagnostic {
   message: string
 }
 
-interface ParsedTypeScriptSource extends TypeScriptSource {
-  sourceFile: ts.SourceFile
-}
-
 interface HookOrderItem {
-  isHook: boolean
   name: string
   node: ts.Node
   rank: number
 }
 
+interface HookBarrier {
+  /** 命令式语句说明 */
+  label: string
+}
+
 interface ClassNameBinding {
   initializer?: ts.Expression
+  node: ts.Node
+}
+
+interface ClassNameConstantRecord {
+  /** 样式常量声明 */
+  declaration: ts.VariableDeclaration
+  /** 声明所在文件 */
+  filePath: string
+  /** 样式常量名称 */
+  name: string
+  /** 源码消费点数量 */
+  references: number
+  /** 声明所在源码 */
+  sourceFile: ts.SourceFile
+}
+
+interface ClassNameLayoutViolation {
+  /** 静态布局违规类型 */
+  kind:
+    | 'long-cn-single-line'
+    | 'long-static-class'
+    | 'short-static-cn'
+    | 'unbalanced-cn-segments'
+  /** 静态布局违规节点 */
   node: ts.Node
 }
 
@@ -149,29 +207,46 @@ const ignoredDirectoryNames = new Set([
   'node_modules',
   'tmp',
 ])
+/** React 与常用工具库的 state / ref Hook */
 const stateHookNames = new Set([
+  'useBoolean',
+  'useForm',
   'useImperativeHandle',
+  'useImmer',
+  'useLatest',
+  'useMap',
   'useReducer',
   'useRef',
+  'useResizeObserver',
+  'useSet',
   'useState',
+  'useStorage',
   'useTransition',
+  'useVirtualizer',
+  'useWatch',
 ])
+/** React memo Hook */
 const memoHookNames = new Set(['useCallback', 'useMemo'])
-
-/** -------------------- AST 工具 -------------------- */
-/** 将受控源码解析为真实 TypeScript AST */
-export function parseTypeScriptSources(sources: readonly TypeScriptSource[]) {
-  return sources.map((item): ParsedTypeScriptSource => ({
-    ...item,
-    sourceFile: ts.createSourceFile(
-      item.filePath,
-      item.source,
-      ts.ScriptTarget.Latest,
-      true,
-      item.filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-    ),
-  }))
-}
+/** 返回稳定事件动作的通用 Hook */
+const eventHookNames = new Set([
+  'useDebounce',
+  'useDebounceFn',
+  'useEvent',
+  'useMutation',
+])
+/** 名称不带 Effect 但负责注册副作用的通用 Hook */
+const effectHookNames = new Set([
+  'useEventListener',
+  'useInterval',
+  'useMount',
+  'useResizeObservers',
+  'useTimeout',
+  'useUnmount',
+])
+/** 静态 class 字符串保持单行的最大字符数 */
+const maxStaticClassNameLength = 56
+/** 普通静态 cn 分组允许的最大字符数差 */
+const maxCnSegmentLengthDifference = 32
 
 /** 枚举仓库 TypeScript 源码并排除生成、依赖、构建和负 fixture */
 export function readRepositoryTypeScriptSources(
@@ -498,34 +573,60 @@ export function readReactHookOrderDiagnostics(
 
   for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
     const reactOutputContext = readReactOutputContext(sourceFile)
+    const inspectedBodies = new Set<ts.Block>()
     const inspect = (scope: string, body: ts.ConciseBody) => {
-      if (!ts.isBlock(body))
+      if (!ts.isBlock(body) || inspectedBodies.has(body))
         return
 
-      let latestRank = 0
+      inspectedBodies.add(body)
+      let barrier: HookBarrier | undefined
+      let latestItem: HookOrderItem | undefined
 
       for (const statement of body.statements) {
-        for (const item of readHookOrderItems(statement)) {
-          if (item.isHook && item.rank < latestRank) {
+        const items = readHookOrderItems(statement)
+
+        for (const item of items) {
+          if (barrier && item.rank !== 4) {
+            diagnostics.push({
+              ...positionOf(sourceFile, item.node),
+              barrier: barrier.label,
+              filePath,
+              hookName: item.name,
+              kind: 'imperative-barrier',
+              scope,
+            })
+            continue
+          }
+
+          if (latestItem && item.rank < latestItem.rank) {
             diagnostics.push({
               ...positionOf(sourceFile, item.node),
               filePath,
               hookName: item.name,
+              kind: 'stage-order',
               scope,
             })
+            continue
           }
 
-          latestRank = Math.max(latestRank, item.rank)
+          latestItem = item
         }
+
+        barrier ??= readHookBarrier(statement, items)
       }
     }
 
     const visit = (node: ts.Node) => {
-      if (ts.isFunctionDeclaration(node) && node.name && node.body) {
-        const name = node.name.text
+      if (ts.isFunctionDeclaration(node) && node.body) {
+        const name = node.name?.text
+        const defaultExport = hasModifier(node, ts.SyntaxKind.DefaultKeyword)
 
-        if (/^[A-Z]/.test(name) || /^use[A-Z0-9]/.test(name))
-          inspect(name, node.body)
+        if (
+          (name && (/^[A-Z]/.test(name) || /^use[A-Z0-9]/.test(name)))
+          || defaultExport
+        ) {
+          inspect(name ?? 'default export', node.body)
+        }
       }
 
       if (
@@ -547,6 +648,19 @@ export function readReactHookOrderDiagnostics(
         }
       }
 
+      if (ts.isExportAssignment(node)) {
+        const fn = readComponentFunction(node.expression)
+
+        if (fn) {
+          inspect(
+            ts.isFunctionExpression(fn)
+              ? fn.name?.text ?? 'default export'
+              : 'default export',
+            fn.body,
+          )
+        }
+      }
+
       node.forEachChild(visit)
     }
 
@@ -558,7 +672,7 @@ export function readReactHookOrderDiagnostics(
 
 /** -------------------- className -------------------- */
 /** 检查 className 是否通过 cn 组合动态 Tailwind 候选 */
-export function readClassNameDiagnostics(
+function readDynamicClassNameDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ClassNameDiagnostic[] = []
@@ -763,6 +877,294 @@ export function readClassNameDiagnostics(
   return diagnostics.sort(comparePositionedDiagnostics)
 }
 
+/**
+ * 检查 className 动态组合、静态布局与样式常量边界
+ */
+export function readClassNameDiagnostics(
+  sources: readonly TypeScriptSource[],
+) {
+  return [
+    ...readDynamicClassNameDiagnostics(sources),
+    ...readClassNameLayoutDiagnostics(sources),
+  ].sort(comparePositionedDiagnostics)
+}
+
+/**
+ * 检查静态 class 布局、cn 分组、classNames 槽位与样式常量消费数
+ */
+function readClassNameLayoutDiagnostics(
+  sources: readonly TypeScriptSource[],
+) {
+  const diagnostics: ClassNameDiagnostic[] = []
+  const parsedSources = parseTypeScriptSources(sources)
+  const declarationsBySourceFile = new Map<
+    ts.SourceFile,
+    Map<ts.Node, Map<string, ts.VariableDeclaration[]>>
+  >()
+  const constants: ClassNameConstantRecord[] = []
+  const constantByDeclaration = new Map<
+    ts.VariableDeclaration,
+    ClassNameConstantRecord
+  >()
+  const constantsByName = new Map<string, ClassNameConstantRecord[]>()
+
+  for (const { filePath, sourceFile } of parsedSources) {
+    const declarations = new Map<
+      ts.Node,
+      Map<string, ts.VariableDeclaration[]>
+    >()
+    /** 索引每个词法作用域中的局部变量声明 */
+    const indexDeclarations = (node: ts.Node) => {
+      if (
+        ts.isVariableDeclaration(node)
+        && ts.isIdentifier(node.name)
+        && node.initializer
+      ) {
+        const scope = readLexicalScope(node)
+        const scoped = declarations.get(scope) ?? new Map<
+          string,
+          ts.VariableDeclaration[]
+        >()
+        const named = scoped.get(node.name.text) ?? []
+
+        named.push(node)
+        scoped.set(node.name.text, named)
+        declarations.set(scope, scoped)
+
+        if (isClassNameConstant(node.name.text)) {
+          const name = node.name.text
+          const record: ClassNameConstantRecord = {
+            declaration: node,
+            filePath,
+            name,
+            references: 0,
+            sourceFile,
+          }
+          const namedRecords = constantsByName.get(name) ?? []
+
+          constants.push(record)
+          constantByDeclaration.set(node, record)
+          namedRecords.push(record)
+          constantsByName.set(name, namedRecords)
+        }
+      }
+
+      node.forEachChild(indexDeclarations)
+    }
+
+    indexDeclarations(sourceFile)
+    declarationsBySourceFile.set(sourceFile, declarations)
+  }
+
+  /** 从当前词法作用域向外解析同名局部变量声明 */
+  const resolveDeclaration = (
+    sourceFile: ts.SourceFile,
+    declarations: Map<ts.Node, Map<string, ts.VariableDeclaration[]>>,
+    identifier: ts.Identifier,
+  ) => {
+    let scope: ts.Node | undefined = readLexicalScope(identifier)
+
+    while (scope) {
+      const declaration = declarations.get(scope)
+        ?.get(identifier.text)
+        ?.filter(item => item.getStart(sourceFile) < identifier.getStart(sourceFile))
+        .at(-1)
+
+      if (declaration)
+        return declaration
+
+      scope = readParentLexicalScope(scope)
+    }
+  }
+
+  /** 解析相对模块命名导入与唯一同名样式常量声明 */
+  const readImportedConstants = (sourceFile: ts.SourceFile) => {
+    const imported = new Map<string, ClassNameConstantRecord>()
+
+    for (const statement of sourceFile.statements) {
+      if (
+        !ts.isImportDeclaration(statement)
+        || !statement.importClause?.namedBindings
+        || !ts.isNamedImports(statement.importClause.namedBindings)
+        || !ts.isStringLiteral(statement.moduleSpecifier)
+        || !statement.moduleSpecifier.text.startsWith('.')
+      ) {
+        continue
+      }
+
+      for (const specifier of statement.importClause.namedBindings.elements) {
+        const sourceName = specifier.propertyName?.text ?? specifier.name.text
+        const [record, duplicate] = constantsByName.get(sourceName) ?? []
+
+        if (record && !duplicate)
+          imported.set(specifier.name.text, record)
+      }
+    }
+
+    return imported
+  }
+
+  for (const { sourceFile } of parsedSources) {
+    const declarations = declarationsBySourceFile.get(sourceFile)!
+    const imported = readImportedConstants(sourceFile)
+    /** 统计真实值引用，声明以及导入导出名称不计为消费点 */
+    const countReferences = (node: ts.Node) => {
+      if (ts.isIdentifier(node) && isIdentifierReference(node)) {
+        const declaration = resolveDeclaration(sourceFile, declarations, node)
+        const record = declaration
+          ? constantByDeclaration.get(declaration)
+          : imported.get(node.text)
+
+        if (record)
+          record.references += 1
+      }
+
+      node.forEachChild(countReferences)
+    }
+
+    countReferences(sourceFile)
+  }
+
+  for (const record of constants) {
+    if (record.references !== 1)
+      continue
+
+    diagnostics.push({
+      ...positionOf(record.sourceFile, record.declaration),
+      filePath: record.filePath,
+      kind: 'single-use-class-constant',
+      target: record.name,
+    })
+  }
+
+  for (const { filePath, sourceFile } of parsedSources) {
+    const declarations = declarationsBySourceFile.get(sourceFile)!
+    const reportedPositions = new Set<number>()
+    const reportedRootObjects = new Set<number>()
+    /** 从当前词法作用域解析同名局部变量的初始化表达式 */
+    const resolveIdentifier = (identifier: ts.Identifier) => (
+      resolveDeclaration(sourceFile, declarations, identifier)?.initializer
+    )
+    /** 报告单个 class 表达式中的静态布局诊断 */
+    const inspect = (target: string, expression: ts.Expression) => {
+      for (const violation of readClassNameLayoutViolations(
+        expression,
+        sourceFile,
+        resolveIdentifier,
+      )) {
+        const position = violation.node.getStart(sourceFile)
+
+        if (reportedPositions.has(position))
+          continue
+
+        reportedPositions.add(position)
+        diagnostics.push({
+          ...positionOf(sourceFile, violation.node),
+          filePath,
+          kind: violation.kind,
+          target,
+        })
+      }
+    }
+    /** 报告只设置 root 的 classNames 对象并按来源去重 */
+    const inspectRootOnly = (
+      target: string,
+      expression: ts.Expression,
+      reportNode: ts.Node,
+    ) => {
+      const classNames = readRootOnlyClassNames(expression, resolveIdentifier)
+
+      if (!classNames)
+        return
+
+      const objectPosition = classNames.getStart(sourceFile)
+
+      if (reportedRootObjects.has(objectPosition))
+        return
+
+      reportedRootObjects.add(objectPosition)
+      diagnostics.push({
+        ...positionOf(sourceFile, reportNode),
+        filePath,
+        kind: 'root-only-class-names',
+        target,
+      })
+    }
+    /** 遍历 JSX、配置字段和显式样式常量 */
+    const visit = (node: ts.Node) => {
+      if (ts.isJsxAttribute(node)) {
+        const name = readStaticPropertyName(node.name)
+
+        if (
+          (name === 'className' || name === 'classNames')
+          && node.initializer
+        ) {
+          if (ts.isStringLiteral(node.initializer)) {
+            inspect(name, node.initializer)
+          }
+          else if (
+            ts.isJsxExpression(node.initializer)
+            && node.initializer.expression
+          ) {
+            inspect(name, node.initializer.expression)
+
+            if (name === 'classNames') {
+              inspectRootOnly(name, node.initializer.expression, node)
+            }
+          }
+
+          const openingElement = node.parent.parent
+          const initializerLine = sourceFile.getLineAndCharacterOfPosition(
+            node.initializer.getStart(sourceFile),
+          ).line
+          const openingLine = sourceFile.getLineAndCharacterOfPosition(
+            openingElement.getStart(sourceFile),
+          ).line
+
+          if (
+            node.initializer.getText(sourceFile).includes('\n')
+            && initializerLine === openingLine
+          ) {
+            diagnostics.push({
+              ...positionOf(sourceFile, node),
+              filePath,
+              kind: 'inline-multiline-class-attribute',
+              target: name,
+            })
+          }
+        }
+      }
+      else if (ts.isPropertyAssignment(node)) {
+        const name = readStaticPropertyName(node.name)
+
+        if (name === 'className' || name === 'classNames') {
+          inspect(name, node.initializer)
+
+          if (name === 'classNames')
+            inspectRootOnly(name, node.initializer, node)
+        }
+      }
+      else if (
+        ts.isVariableDeclaration(node)
+        && ts.isIdentifier(node.name)
+        && node.initializer
+        && isClassNameConstant(node.name.text)
+      ) {
+        inspect(node.name.text, node.initializer)
+
+        if (isClassNamesConstant(node.name.text))
+          inspectRootOnly(node.name.text, node.initializer, node)
+      }
+
+      node.forEachChild(visit)
+    }
+
+    visit(sourceFile)
+  }
+
+  return diagnostics.sort(comparePositionedDiagnostics)
+}
+
 /** -------------------- 测试位置 -------------------- */
 /** 检查测试文件是否位于 tests 下的领域目录 */
 export function readTestLocationDiagnostics(
@@ -796,14 +1198,53 @@ export function scanRepositoryQuality(root = repositoryRoot) {
   ))
   const diagnostics: RepositoryQualityDiagnostic[] = []
 
-  appendDiagnostics(diagnostics, 'explicit-exports', readExplicitExportDiagnostics(productionSources))
-  appendDiagnostics(diagnostics, 'interface-comments', readInterfaceCommentDiagnostics(productionSources))
-  appendDiagnostics(diagnostics, 'module-index', readModuleIndexDiagnostics(productionSources))
-  appendDiagnostics(diagnostics, 'private-members', readPrivateMemberDiagnostics(productionSources))
-  appendDiagnostics(diagnostics, 'react-components', readReactComponentDiagnostics(productionSources))
-  appendDiagnostics(diagnostics, 'react-hook-order', readReactHookOrderDiagnostics(productionSources))
-  appendDiagnostics(diagnostics, 'class-name', readClassNameDiagnostics(productionSources))
+  appendDiagnostics(
+    diagnostics,
+    'explicit-exports',
+    readExplicitExportDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'interface-comments',
+    readInterfaceCommentDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'module-index',
+    readModuleIndexDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'module-directory-layout',
+    readModuleDirectoryLayoutDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'private-members',
+    readPrivateMemberDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'react-components',
+    readReactComponentDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'react-hook-order',
+    readReactHookOrderDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'custom-hook-modules',
+    readCustomHookModuleDiagnostics(productionSources),
+  )
+  appendDiagnostics(
+    diagnostics,
+    'class-name',
+    readClassNameDiagnostics(productionSources),
+  )
   appendDiagnostics(diagnostics, 'test-location', readTestLocationDiagnostics(allSources))
+  appendDiagnostics(diagnostics, 'test-structure', readTestStructureDiagnostics(allSources))
 
   return diagnostics
 }
@@ -811,24 +1252,6 @@ export function scanRepositoryQuality(root = repositoryRoot) {
 /** -------------------- 内部函数 -------------------- */
 function toPosixPath(filePath: string) {
   return filePath.split(path.sep).join('/')
-}
-
-function positionOf(sourceFile: ts.SourceFile, node: ts.Node) {
-  const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-
-  return {
-    column: position.character + 1,
-    line: position.line + 1,
-  }
-}
-
-function comparePositionedDiagnostics(
-  left: { column: number, filePath: string, line: number },
-  right: { column: number, filePath: string, line: number },
-) {
-  return left.filePath.localeCompare(right.filePath)
-    || left.line - right.line
-    || left.column - right.column
 }
 
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
@@ -892,10 +1315,6 @@ function isEntryProjectSourceRoot(
     && (fileNames.has('main.ts') || fileNames.has('main.tsx'))
 }
 
-function isTanStackRoutesDirectory(directoryPath: string) {
-  return /^projects\/(?:admin|client)\/src\/routes(?:\/|$)/.test(directoryPath)
-}
-
 function isNamedClassMember(node: ts.Node): node is
   | ts.GetAccessorDeclaration
   | ts.MethodDeclaration
@@ -909,6 +1328,222 @@ function isNamedClassMember(node: ts.Node): node is
     || ts.isSetAccessorDeclaration(node)
 }
 
+/**
+ * 读取属性或 JSX Attribute 的静态名称
+ */
+function readStaticPropertyName(name: ts.PropertyName | ts.JsxAttributeName) {
+  if (
+    ts.isIdentifier(name)
+    || ts.isStringLiteral(name)
+    || ts.isNumericLiteral(name)
+  ) {
+    return name.text
+  }
+}
+
+/**
+ * 判断变量是否为显式命名的 className 样式常量
+ */
+function isClassNameConstant(name: string) {
+  return /(?:^|_)CLASS_NAMES?$/.test(name)
+}
+
+/**
+ * 判断变量是否为显式命名的 classNames 语义样式常量
+ */
+function isClassNamesConstant(name: string) {
+  return /(?:^|_)CLASS_NAMES$/.test(name)
+}
+
+/**
+ * 判断标识符是否为值引用
+ */
+function isIdentifierReference(identifier: ts.Identifier) {
+  const parent = identifier.parent
+  const namedParent = parent as ts.Node & { name?: ts.Node }
+
+  if (
+    ts.isBindingElement(parent)
+    || ts.isExportSpecifier(parent)
+    || ts.isImportSpecifier(parent)
+  ) {
+    return false
+  }
+
+  return namedParent.name !== identifier
+    || ts.isShorthandPropertyAssignment(parent)
+}
+
+/**
+ * 读取静态 class 字符串
+ */
+function readStaticClassText(node: ts.Node) {
+  const current = ts.isExpression(node) ? unwrapExpression(node) : node
+
+  if (
+    ts.isStringLiteral(current)
+    || ts.isNoSubstitutionTemplateLiteral(current)
+  ) {
+    return current.text
+  }
+}
+
+/**
+ * 判断静态字符串是否包含多个 class
+ */
+function hasMultipleClasses(text: string) {
+  return text.trim().split(/\s+/).length > 1
+}
+
+/**
+ * 判断 cn 分组是否包含需要保持完整语义的复杂 utility
+ */
+function hasComplexClassGroup(text: string) {
+  return text.includes('[')
+    || text.includes(']')
+    || text.split(/\s+/).some(className => className.includes(':'))
+}
+
+/**
+ * 解析只声明 root 槽位的 classNames 对象
+ */
+function readRootOnlyClassNames(
+  expression: ts.Expression,
+  resolveIdentifier: (identifier: ts.Identifier) => ts.Expression | undefined,
+  activeIdentifiers = new Set<string>(),
+): ts.ObjectLiteralExpression | undefined {
+  const current = unwrapExpression(expression)
+
+  if (ts.isIdentifier(current)) {
+    if (activeIdentifiers.has(current.text))
+      return
+
+    const initializer = resolveIdentifier(current)
+
+    if (!initializer)
+      return
+
+    activeIdentifiers.add(current.text)
+    const result = readRootOnlyClassNames(
+      initializer,
+      resolveIdentifier,
+      activeIdentifiers,
+    )
+
+    activeIdentifiers.delete(current.text)
+    return result
+  }
+
+  if (!ts.isObjectLiteralExpression(current) || current.properties.length !== 1)
+    return
+
+  const [property] = current.properties
+
+  if (
+    property
+    && (
+      ts.isPropertyAssignment(property)
+      || ts.isShorthandPropertyAssignment(property)
+    )
+    && readStaticPropertyName(property.name) === 'root'
+  ) {
+    return current
+  }
+}
+
+/**
+ * 检查 class 表达式树中的静态布局与 cn 分组
+ */
+function readClassNameLayoutViolations(
+  expression: ts.Expression,
+  sourceFile: ts.SourceFile,
+  resolveIdentifier: (identifier: ts.Identifier) => ts.Expression | undefined,
+  activeIdentifiers = new Set<string>(),
+) {
+  const violations: ClassNameLayoutViolation[] = []
+  /** 遍历表达式并避免重复解析同名绑定 */
+  const visit = (node: ts.Node, insideCn = false) => {
+    const current = ts.isExpression(node) ? unwrapExpression(node) : node
+
+    if (ts.isIdentifier(current)) {
+      if (activeIdentifiers.has(current.text))
+        return
+
+      const initializer = resolveIdentifier(current)
+
+      if (initializer) {
+        activeIdentifiers.add(current.text)
+        visit(initializer, insideCn)
+        activeIdentifiers.delete(current.text)
+      }
+      return
+    }
+
+    if (
+      ts.isCallExpression(current)
+      && ts.isIdentifier(current.expression)
+      && current.expression.text === 'cn'
+    ) {
+      const staticArguments = current.arguments
+        .map(argument => ts.isSpreadElement(argument)
+          ? undefined
+          : readStaticClassText(argument))
+        .filter((text): text is string => text !== undefined)
+      const staticLength = staticArguments.join(' ').length
+      const allStatic = staticArguments.length === current.arguments.length
+
+      if (
+        staticLength > maxStaticClassNameLength
+        && !current.getText(sourceFile).includes('\n')
+      ) {
+        violations.push({ kind: 'long-cn-single-line', node: current })
+        return
+      }
+
+      if (allStatic && staticLength <= maxStaticClassNameLength) {
+        violations.push({ kind: 'short-static-cn', node: current })
+        return
+      }
+
+      if (
+        staticArguments.length >= 2
+        && staticArguments.every(text => !hasComplexClassGroup(text))
+        && Math.max(...staticArguments.map(text => text.length))
+        - Math.min(...staticArguments.map(text => text.length))
+        > maxCnSegmentLengthDifference
+      ) {
+        violations.push({ kind: 'unbalanced-cn-segments', node: current })
+        return
+      }
+
+      for (const argument of current.arguments) {
+        visit(
+          ts.isSpreadElement(argument) ? argument.expression : argument,
+          true,
+        )
+      }
+      return
+    }
+
+    const staticText = readStaticClassText(current)
+
+    if (
+      !insideCn
+      && staticText
+      && staticText.length > maxStaticClassNameLength
+      && hasMultipleClasses(staticText)
+    ) {
+      violations.push({ kind: 'long-static-class', node: current })
+      return
+    }
+
+    current.forEachChild(child => visit(child, insideCn))
+  }
+
+  visit(expression)
+  return violations
+}
+
 function readHookOrderItems(statement: ts.Statement) {
   const items: HookOrderItem[] = []
 
@@ -916,10 +1551,12 @@ function readHookOrderItems(statement: ts.Statement) {
     for (const declaration of statement.declarationList.declarations) {
       if (
         declaration.initializer
-        && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))
+        && (
+          ts.isArrowFunction(declaration.initializer)
+          || ts.isFunctionExpression(declaration.initializer)
+        )
       ) {
         items.push({
-          isHook: false,
           name: declaration.name.getText(),
           node: declaration,
           rank: 4,
@@ -929,7 +1566,6 @@ function readHookOrderItems(statement: ts.Statement) {
   }
   else if (ts.isFunctionDeclaration(statement)) {
     items.push({
-      isHook: false,
       name: statement.name?.text ?? '<anonymous>',
       node: statement,
       rank: 4,
@@ -953,7 +1589,6 @@ function readHookOrderItems(statement: ts.Statement) {
 
       if (hookName) {
         items.push({
-          isHook: true,
           name: hookName,
           node,
           rank: readHookRank(hookName),
@@ -966,6 +1601,31 @@ function readHookOrderItems(statement: ts.Statement) {
 
   visit(statement)
   return items.sort((left, right) => left.node.getStart() - right.node.getStart())
+}
+
+/**
+ * 读取会阻断后续 Hook 阶段的命令式语句
+ */
+function readHookBarrier(
+  statement: ts.Statement,
+  items: readonly HookOrderItem[],
+): HookBarrier | undefined {
+  if (items.length > 0 || ts.isVariableStatement(statement))
+    return
+
+  if (
+    ts.isInterfaceDeclaration(statement)
+    || ts.isTypeAliasDeclaration(statement)
+    || ts.isEmptyStatement(statement)
+  ) {
+    return
+  }
+
+  return {
+    label: ts.isReturnStatement(statement)
+      ? 'return'
+      : `命令式 ${ts.SyntaxKind[statement.kind]}`,
+  }
 }
 
 function readHookName(call: ts.CallExpression) {
@@ -983,27 +1643,15 @@ function readHookName(call: ts.CallExpression) {
 function readHookRank(name: string) {
   if (name === 'useEffectEvent')
     return 5
-  if (name.endsWith('Effect'))
+  if (effectHookNames.has(name) || name.endsWith('Effect'))
     return 6
   if (memoHookNames.has(name))
     return 3
   if (stateHookNames.has(name))
     return 2
+  if (eventHookNames.has(name))
+    return 4
   return 1
-}
-
-function unwrapExpression(expression: ts.Expression): ts.Expression {
-  if (
-    ts.isParenthesizedExpression(expression)
-    || ts.isAsExpression(expression)
-    || ts.isSatisfiesExpression(expression)
-    || ts.isNonNullExpression(expression)
-    || ts.isTypeAssertionExpression(expression)
-  ) {
-    return unwrapExpression(expression.expression)
-  }
-
-  return expression
 }
 
 function readComponentFunction(

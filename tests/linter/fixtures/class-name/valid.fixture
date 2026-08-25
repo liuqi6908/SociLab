@@ -1,12 +1,16 @@
 import { cn } from '@socilab/shared-ui'
 
-export function ValidClassName({ active }: { active: boolean }) {
+export function ValidClassName({ active, color }: { active: boolean; color: string }) {
+  const flex = 'bg-' + color
+
   return (
     <div
       className={cn(
         'flex gap-2',
         active && 'bg-primary',
         active ? 'text-foreground' : 'text-muted',
+        { flex: active },
+        ['grid', active && 'gap-4', active ? 'p-2' : 'p-4'],
       )}
     />
   )

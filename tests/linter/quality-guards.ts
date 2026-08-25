@@ -124,6 +124,16 @@ interface HookOrderItem {
   rank: number
 }
 
+interface ClassNameBinding {
+  initializer?: ts.Expression
+  node: ts.Node
+}
+
+interface ReactOutputContext {
+  createElementNames: ReadonlySet<string>
+  namespaceNames: ReadonlySet<string>
+}
+
 /** -------------------- 常量 -------------------- */
 const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 const ignoredDirectoryNames = new Set([
@@ -451,6 +461,7 @@ export function readReactComponentDiagnostics(
     if (!filePath.endsWith('.tsx'))
       continue
 
+    const reactOutputContext = readReactOutputContext(sourceFile)
     const visit = (node: ts.Node) => {
       if (
         ts.isVariableDeclaration(node)
@@ -460,7 +471,7 @@ export function readReactComponentDiagnostics(
       ) {
         const component = readComponentFunction(node.initializer)
 
-        if (component && hasReactReturn(component)) {
+        if (component && hasReactReturn(component, reactOutputContext)) {
           diagnostics.push({
             ...positionOf(sourceFile, node.name),
             filePath,
@@ -485,6 +496,7 @@ export function readReactHookOrderDiagnostics(
   const diagnostics: ReactHookOrderDiagnostic[] = []
 
   for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+    const reactOutputContext = readReactOutputContext(sourceFile)
     const inspect = (scope: string, body: ts.ConciseBody) => {
       if (!ts.isBlock(body))
         return
@@ -527,7 +539,7 @@ export function readReactHookOrderDiagnostics(
           fn
           && (
             /^use[A-Z0-9]/.test(name)
-            || (/^[A-Z]/.test(name) && hasReactReturn(fn))
+            || (/^[A-Z]/.test(name) && hasReactReturn(fn, reactOutputContext))
           )
         ) {
           inspect(name, fn.body)
@@ -553,25 +565,45 @@ export function readClassNameDiagnostics(
   for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
     const declarationsByScope = new Map<
       ts.Node,
-      Map<string, ts.VariableDeclaration[]>
+      Map<string, ClassNameBinding[]>
     >()
 
-    const indexInitializers = (node: ts.Node) => {
-      if (
-        ts.isVariableDeclaration(node)
-        && ts.isIdentifier(node.name)
-        && node.initializer
-      ) {
-        const scope = readLexicalScope(node)
-        const declarations = declarationsByScope.get(scope) ?? new Map<
-          string,
-          ts.VariableDeclaration[]
-        >()
-        const namedDeclarations = declarations.get(node.name.text) ?? []
+    const addBinding = (
+      scope: ts.Node,
+      name: ts.BindingName,
+      binding: ClassNameBinding,
+    ) => {
+      if (!ts.isIdentifier(name)) {
+        for (const element of name.elements) {
+          if (!ts.isOmittedExpression(element))
+            addBinding(scope, element.name, { node: element })
+        }
+        return
+      }
 
-        namedDeclarations.push(node)
-        declarations.set(node.name.text, namedDeclarations)
-        declarationsByScope.set(scope, declarations)
+      const declarations = declarationsByScope.get(scope) ?? new Map<
+        string,
+        ClassNameBinding[]
+      >()
+      const namedDeclarations = declarations.get(name.text) ?? []
+
+      namedDeclarations.push(binding)
+      declarations.set(name.text, namedDeclarations)
+      declarationsByScope.set(scope, declarations)
+    }
+
+    const indexInitializers = (node: ts.Node) => {
+      if (ts.isVariableDeclaration(node)) {
+        addBinding(readLexicalScope(node), node.name, {
+          initializer: node.initializer,
+          node,
+        })
+      }
+      else if (ts.isParameter(node)) {
+        const scope = readParameterScope(node)
+
+        if (scope)
+          addBinding(scope, node.name, { node })
       }
 
       node.forEachChild(indexInitializers)
@@ -585,7 +617,7 @@ export function readClassNameDiagnostics(
       while (scope) {
         const declaration = declarationsByScope.get(scope)
           ?.get(identifier.text)
-          ?.filter(item => item.getStart(sourceFile) < identifier.getStart(sourceFile))
+          ?.filter(item => item.node.getStart(sourceFile) < identifier.getStart(sourceFile))
           .at(-1)
 
         if (declaration)
@@ -597,17 +629,17 @@ export function readClassNameDiagnostics(
 
     const inspect = (
       expression: ts.Expression,
-      activeDeclarations = new Set<ts.VariableDeclaration>(),
+      activeDeclarations = new Set<ts.Node>(),
     ) => {
       const current = unwrapExpression(expression)
 
       if (ts.isIdentifier(current)) {
         const declaration = resolveInitializer(current)
 
-        if (declaration?.initializer && !activeDeclarations.has(declaration)) {
-          activeDeclarations.add(declaration)
+        if (declaration?.initializer && !activeDeclarations.has(declaration.node)) {
+          activeDeclarations.add(declaration.node)
           inspect(declaration.initializer, activeDeclarations)
-          activeDeclarations.delete(declaration)
+          activeDeclarations.delete(declaration.node)
         }
         return
       }
@@ -618,8 +650,10 @@ export function readClassNameDiagnostics(
         && current.expression.text === 'cn'
       ) {
         for (const argument of current.arguments) {
-          if (!ts.isSpreadElement(argument))
-            inspect(argument, activeDeclarations)
+          inspect(
+            ts.isSpreadElement(argument) ? argument.expression : argument,
+            activeDeclarations,
+          )
         }
         return
       }
@@ -651,6 +685,40 @@ export function readClassNameDiagnostics(
           filePath,
           kind: 'string-concatenation',
         })
+        return
+      }
+
+      if (ts.isObjectLiteralExpression(current)) {
+        for (const property of current.properties) {
+          if (ts.isPropertyAssignment(property) && ts.isComputedPropertyName(property.name))
+            inspect(property.name.expression, activeDeclarations)
+        }
+        return
+      }
+
+      if (ts.isArrayLiteralExpression(current)) {
+        for (const element of current.elements) {
+          if (!ts.isOmittedExpression(element)) {
+            inspect(
+              ts.isSpreadElement(element) ? element.expression : element,
+              activeDeclarations,
+            )
+          }
+        }
+        return
+      }
+
+      if (ts.isConditionalExpression(current)) {
+        inspect(current.whenTrue, activeDeclarations)
+        inspect(current.whenFalse, activeDeclarations)
+        return
+      }
+
+      if (
+        ts.isBinaryExpression(current)
+        && current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+      ) {
+        inspect(current.right, activeDeclarations)
         return
       }
 
@@ -778,7 +846,7 @@ function readMemberName(member: ts.TypeElement, sourceFile: ts.SourceFile) {
 function readLexicalScope(node: ts.Node) {
   let current: ts.Node = node
 
-  while (!ts.isSourceFile(current) && !ts.isBlock(current))
+  while (!isClassNameScope(current))
     current = current.parent
 
   return current
@@ -787,10 +855,30 @@ function readLexicalScope(node: ts.Node) {
 function readParentLexicalScope(scope: ts.Node) {
   let current = scope.parent
 
-  while (current && !ts.isSourceFile(current) && !ts.isBlock(current))
+  while (current && !isClassNameScope(current))
     current = current.parent
 
   return current
+}
+
+function readParameterScope(parameter: ts.ParameterDeclaration) {
+  const parent = parameter.parent
+
+  return isFunctionLikeScope(parent) ? parent : undefined
+}
+
+function isClassNameScope(node: ts.Node) {
+  return ts.isSourceFile(node) || ts.isBlock(node) || isFunctionLikeScope(node)
+}
+
+function isFunctionLikeScope(node: ts.Node): node is ts.FunctionLikeDeclaration {
+  return ts.isArrowFunction(node)
+    || ts.isFunctionDeclaration(node)
+    || ts.isFunctionExpression(node)
+    || ts.isMethodDeclaration(node)
+    || ts.isConstructorDeclaration(node)
+    || ts.isGetAccessorDeclaration(node)
+    || ts.isSetAccessorDeclaration(node)
 }
 
 function isEntryProjectSourceRoot(
@@ -945,9 +1033,12 @@ function readComponentFunction(
   return readComponentFunction(candidate)
 }
 
-function hasReactReturn(fn: ts.ArrowFunction | ts.FunctionExpression) {
+function hasReactReturn(
+  fn: ts.ArrowFunction | ts.FunctionExpression,
+  context: ReactOutputContext,
+) {
   if (!ts.isBlock(fn.body))
-    return isReactOutput(fn.body)
+    return isReactOutput(fn.body, context)
 
   let matched = false
   const visit = (node: ts.Node) => {
@@ -965,7 +1056,11 @@ function hasReactReturn(fn: ts.ArrowFunction | ts.FunctionExpression) {
       return
     }
 
-    if (ts.isReturnStatement(node) && node.expression && isReactOutput(node.expression)) {
+    if (
+      ts.isReturnStatement(node)
+      && node.expression
+      && isReactOutput(node.expression, context)
+    ) {
       matched = true
       return
     }
@@ -977,7 +1072,7 @@ function hasReactReturn(fn: ts.ArrowFunction | ts.FunctionExpression) {
   return matched
 }
 
-function isReactOutput(expression: ts.Expression): boolean {
+function isReactOutput(expression: ts.Expression, context: ReactOutputContext): boolean {
   const current = unwrapExpression(expression)
 
   if (
@@ -989,7 +1084,7 @@ function isReactOutput(expression: ts.Expression): boolean {
   }
 
   if (ts.isConditionalExpression(current))
-    return isReactOutput(current.whenTrue) || isReactOutput(current.whenFalse)
+    return isReactOutput(current.whenTrue, context) || isReactOutput(current.whenFalse, context)
 
   if (
     ts.isBinaryExpression(current)
@@ -998,20 +1093,61 @@ function isReactOutput(expression: ts.Expression): boolean {
       || current.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
     )
   ) {
-    return isReactOutput(current.right)
+    return isReactOutput(current.right, context)
   }
 
-  if (ts.isArrayLiteralExpression(current))
-    return current.elements.some(element => !ts.isSpreadElement(element) && isReactOutput(element))
+  if (ts.isArrayLiteralExpression(current)) {
+    return current.elements.some(element => (
+      !ts.isSpreadElement(element) && isReactOutput(element, context)
+    ))
+  }
 
   if (!ts.isCallExpression(current))
     return false
 
-  return (ts.isIdentifier(current.expression) && current.expression.text === 'createElement')
-    || (
-      ts.isPropertyAccessExpression(current.expression)
-      && current.expression.name.text === 'createElement'
-    )
+  return (
+    ts.isIdentifier(current.expression)
+    && context.createElementNames.has(current.expression.text)
+  )
+  || (
+    ts.isPropertyAccessExpression(current.expression)
+    && ts.isIdentifier(current.expression.expression)
+    && context.namespaceNames.has(current.expression.expression.text)
+    && current.expression.name.text === 'createElement'
+  )
+}
+
+function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
+  const createElementNames = new Set<string>()
+  const namespaceNames = new Set<string>()
+
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || statement.moduleSpecifier.text !== 'react'
+      || !statement.importClause
+    ) {
+      continue
+    }
+
+    if (statement.importClause.name)
+      namespaceNames.add(statement.importClause.name.text)
+
+    const bindings = statement.importClause.namedBindings
+
+    if (bindings && ts.isNamespaceImport(bindings)) {
+      namespaceNames.add(bindings.name.text)
+    }
+    else if (bindings && ts.isNamedImports(bindings)) {
+      for (const element of bindings.elements) {
+        if ((element.propertyName?.text ?? element.name.text) === 'createElement')
+          createElementNames.add(element.name.text)
+      }
+    }
+  }
+
+  return { createElementNames, namespaceNames }
 }
 
 function isArrayClassComposition(expression: ts.Expression) {

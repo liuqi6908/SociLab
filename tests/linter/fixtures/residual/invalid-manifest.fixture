@@ -4,6 +4,7 @@
     "@socilab/plugin": "workspace:*",
     "@electron/packager": "^19.0.0",
     "electron": "^40.0.0",
+    "electron/renderer": "^40.0.0",
     "electron-builder": "^26.0.0"
   }
 }

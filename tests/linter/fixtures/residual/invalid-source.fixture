@@ -3,6 +3,7 @@ import { startRuntime } from '@socilab/runtime'
 import { createThread } from '../../thread/index'
 import electronBuilder from 'electron-builder'
 import electronPackager from '@electron/packager'
+import electronMain from 'electron/main'
 
 import LegacyPluginModule = require('@socilab/plugin')
 
@@ -10,6 +11,7 @@ export type LegacyThreadType = import('@socilab/thread').LegacyType
 
 export const legacyAgentModule = require('@socilab/agent')
 export const lazyElectronModule = import('@socilab/electron')
+export const electronRendererModule = require('electron/renderer')
 export const product = 'QiyanAgent'
 export const formerCompany = 'QiyanSoft'
 export interface Agent {}
@@ -18,6 +20,7 @@ export const values = [
   createAgent,
   electronBuilder,
   electronPackager,
+  electronMain,
   LegacyPluginModule,
   createThread,
   startRuntime,

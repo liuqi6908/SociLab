@@ -197,13 +197,15 @@ describe('react 组件与 Hook 顺序守卫', () => {
     ]).map(item => [item.name, item.line, item.column])).toEqual([
       ['MemoComponent', 3, 14],
       ['ForwardedComponent', 4, 14],
-      ['BlockComponent', 7, 14],
+      ['FactoryComponent', 7, 7],
+      ['BlockComponent', 8, 14],
     ])
     expect(readReactComponentDiagnostics([
       fixture('react/component-wrappers-invalid.fixture', 'component-wrappers-invalid.tsx'),
     ]).map(item => item.name)).toEqual([
       'MemoComponent',
       'ForwardedComponent',
+      'FactoryComponent',
       'BlockComponent',
     ])
   })
@@ -258,6 +260,7 @@ describe('tailwind 与 className 守卫', () => {
       ['dynamic-template', 10],
       ['array-composition', 11],
       ['string-concatenation', 12],
+      ['string-concatenation', 13],
     ])
   })
 

@@ -29,10 +29,12 @@ it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标�
     '../../thread/index',
     'electron-builder',
     '@electron/packager',
+    'electron/main',
     '@socilab/plugin',
     '@socilab/thread',
     '@socilab/agent',
     '@socilab/electron',
+    'electron/renderer',
   ])
   expect(diagnostics.filter(item => item.kind === 'module').slice(0, 3).map(item => (
     [item.line, item.column]
@@ -65,6 +67,7 @@ it('manifest 残留扫描分析依赖键而非原始 substring', () => {
     '@socilab/plugin',
     '@electron/packager',
     'electron',
+    'electron/renderer',
     'electron-builder',
   ])
 

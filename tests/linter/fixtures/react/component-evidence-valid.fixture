@@ -2,6 +2,7 @@ import { memo } from 'react'
 
 const MemoizedValue = memo(() => 'value')
 const WrappedValue = memoize(() => 'value')
+const BrowserElement = () => document.createElement('div')
 
 export function CallbackOwner() {
   const SelectValue = (values: string[]) => values.at(0)
@@ -9,5 +10,5 @@ export function CallbackOwner() {
     return value.trim()
   }
 
-  return <span>{FormatValue(SelectValue([MemoizedValue, WrappedValue].map(String)) ?? '')}</span>
+  return <span>{FormatValue(SelectValue([MemoizedValue, WrappedValue, BrowserElement].map(String)) ?? '')}</span>
 }

@@ -1,3 +1,5 @@
+const classes = 'bg-' + globalThis.name
+
 export function FirstComponent() {
   const classes = 'flex'
 
@@ -19,4 +21,14 @@ export function NestedScope({ color }: { color: string }) {
   }
 
   return <div className={classes} data-preview={readPreview()} />
+}
+
+export function ComponentParameter({ classes }: { classes: string }) {
+  return <div className={classes} />
+}
+
+export function CallbackParameter() {
+  const render = (classes: string) => <span className={classes} />
+
+  return render('grid')
 }

@@ -206,6 +206,7 @@ function readModuleSpecifier(node: ts.Node) {
 
 function isElectronPackage(name: string) {
   return name === 'electron'
+    || name.startsWith('electron/')
     || name.startsWith('electron-')
     || /^@electron\/[^/]+(?:\/|$)/.test(name)
 }

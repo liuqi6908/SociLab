@@ -54,15 +54,40 @@ describe('server', () => {
       openapi: string
       paths: Record<string, Record<string, unknown>>
     }
-    const methods = Object.values(spec.paths).flatMap(path => (
-      Object.keys(path).filter(method => ['delete', 'get', 'patch', 'post', 'put'].includes(method))
-    ))
+    const methods = listOpenApiMethods(spec.paths)
 
     expect(specResponse.status).toBe(200)
     expect(spec.openapi).toBe('3.1.1')
-    expect(methods).toEqual(['get'])
+    expect(methods).toEqual(['GET /meta/info'])
     expect(docsResponse.status).toBe(200)
     await expect(docsResponse.text()).resolves.toContain('SociLab API')
+  })
+
+  it('方法扫描覆盖全部 OpenAPI 标准操作键并忽略 Path Item 元数据', () => {
+    const paths = {
+      '/fixture': {
+        get: {},
+        put: {},
+        post: {},
+        delete: {},
+        options: {},
+        head: {},
+        patch: {},
+        trace: {},
+        parameters: [],
+      },
+    }
+
+    expect(listOpenApiMethods(paths)).toEqual([
+      'GET /fixture',
+      'PUT /fixture',
+      'POST /fixture',
+      'DELETE /fixture',
+      'OPTIONS /fixture',
+      'HEAD /fixture',
+      'PATCH /fixture',
+      'TRACE /fixture',
+    ])
   })
 
   it('解析服务地址、端口与跨域来源的配置边界', () => {
@@ -283,3 +308,12 @@ describe('server', () => {
     })
   })
 })
+
+/** 列出 OpenAPI 文档中公开的标准 HTTP 操作 */
+function listOpenApiMethods(paths: Record<string, object | undefined>) {
+  return Object.entries(paths).flatMap(([path, item]) => (
+    Object.keys(item ?? {})
+      .filter(method => ['delete', 'get', 'head', 'options', 'patch', 'post', 'put', 'trace'].includes(method))
+      .map(method => `${method.toUpperCase()} ${path}`)
+  ))
+}

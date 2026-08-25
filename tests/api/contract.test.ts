@@ -56,13 +56,36 @@ describe('api contract', () => {
     }).generate(apiContract, {
       info: { title: 'SociLab', version: '0.1.0' },
     })
-    const methods = Object.entries(document.paths ?? {}).flatMap(([path, item]) => (
-      Object.keys(item ?? {})
-        .filter(method => ['delete', 'get', 'patch', 'post', 'put'].includes(method))
-        .map(method => `${method.toUpperCase()} ${path}`)
-    ))
+    const methods = listOpenApiMethods(document.paths ?? {})
 
     expect(methods).toEqual(['GET /meta/info'])
+  })
+
+  it('方法扫描覆盖全部 OpenAPI 标准操作键并忽略 Path Item 元数据', () => {
+    const paths = {
+      '/fixture': {
+        get: {},
+        put: {},
+        post: {},
+        delete: {},
+        options: {},
+        head: {},
+        patch: {},
+        trace: {},
+        parameters: [],
+      },
+    }
+
+    expect(listOpenApiMethods(paths)).toEqual([
+      'GET /fixture',
+      'PUT /fixture',
+      'POST /fixture',
+      'DELETE /fixture',
+      'OPTIONS /fixture',
+      'HEAD /fixture',
+      'PATCH /fixture',
+      'TRACE /fixture',
+    ])
   })
 
   it('rejects undeclared meta.info input fields in runtime and OpenAPI contracts', async () => {
@@ -114,4 +137,13 @@ function listProcedures(router: object, prefix: string[] = []): string[] {
 
     return listProcedures(value, path)
   }).sort()
+}
+
+/** 列出 OpenAPI 文档中公开的标准 HTTP 操作 */
+function listOpenApiMethods(paths: Record<string, object | undefined>) {
+  return Object.entries(paths).flatMap(([path, item]) => (
+    Object.keys(item ?? {})
+      .filter(method => ['delete', 'get', 'head', 'options', 'patch', 'post', 'put', 'trace'].includes(method))
+      .map(method => `${method.toUpperCase()} ${path}`)
+  ))
 }

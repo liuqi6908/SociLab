@@ -6,10 +6,15 @@
  */
 // cspell:ignore qygent
 import type { LoggerEvent } from 'babel-plugin-react-compiler'
-import type { TypeScriptSource } from './quality-guard-source'
+import type { TypeScriptSource } from './source'
+import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import { transformSync } from '@babel/core'
 import reactCompiler from 'babel-plugin-react-compiler'
-import { readRepositoryTypeScriptSources } from './quality-guards'
+import {
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './repository-paths'
 
 /** -------------------- 类型 -------------------- */
 /** React Compiler 失败诊断 */
@@ -33,6 +38,7 @@ export interface ReactCompilerResult {
 }
 
 /** -------------------- 常量 -------------------- */
+const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 /** React Compiler 当前与未来源码根目录 */
 const reactCompilerSourceRoots = [
   'projects/client/src',
@@ -103,7 +109,91 @@ export function readReactCompilerDiagnostics(
   return { compiledFunctions, diagnostics }
 }
 
+/**
+ * 格式化 React Compiler 失败诊断
+ */
+export function formatReactCompilerDiagnostics(
+  result: ReactCompilerResult,
+) {
+  return [
+    'React Compiler 检查失败：',
+    ...result.diagnostics.map(item => (
+      `- ${item.filePath}:${item.line} ${item.kind} ${item.reason}`
+    )),
+  ].join('\n')
+}
+
+/**
+ * 断言源码可被 React Compiler 编译
+ */
+export function assertReactCompiler(sources: readonly TypeScriptSource[]) {
+  const result = readReactCompilerDiagnostics(sources)
+
+  if (result.diagnostics.length > 0)
+    throw new Error(formatReactCompilerDiagnostics(result))
+
+  return result
+}
+
 /** -------------------- 内部函数 -------------------- */
+/**
+ * 枚举仓库 TypeScript 源码并排除生成、依赖、构建和负 fixture
+ */
+function readRepositoryTypeScriptSources(
+  sourceRoots: readonly string[],
+  root = repositoryRoot,
+) {
+  const sources: TypeScriptSource[] = []
+
+  /** 收集指定源码目录 */
+  const collect = (directoryPath: string) => {
+    const entries = readdirSync(directoryPath, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && repositoryIgnoredDirNames.has(entry.name))
+        continue
+
+      const absolutePath = path.join(directoryPath, entry.name)
+
+      if (entry.isDirectory()) {
+        const relativeDirectory = toPosixPath(path.relative(root, absolutePath))
+
+        if (relativeDirectory === 'tests/linter/fixtures')
+          continue
+
+        collect(absolutePath)
+        continue
+      }
+
+      if (
+        !entry.isFile()
+        || !/\.tsx?$/.test(entry.name)
+        || repositoryIgnoredFileNames.has(entry.name)
+      ) {
+        continue
+      }
+
+      sources.push({
+        filePath: toPosixPath(path.relative(root, absolutePath)),
+        source: readFileSync(absolutePath, 'utf8'),
+      })
+    }
+  }
+
+  for (const sourceRoot of sourceRoots)
+    collect(path.resolve(root, sourceRoot))
+
+  return sources.sort((left, right) => left.filePath.localeCompare(right.filePath))
+}
+
+/**
+ * 将文件路径转换为 POSIX 格式
+ */
+function toPosixPath(filePath: string) {
+  return filePath.split(path.sep).join('/')
+}
+
 /**
  * 将真实 Compiler 事件转换为统一失败诊断
  */

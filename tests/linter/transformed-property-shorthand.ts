@@ -5,14 +5,20 @@
  * 本检查无响应式、回调更新或 SSR 状态，报告回调可注入且诊断本身不会触发硬失败
  */
 // cspell:ignore qygent
-import type { TypeScriptSource } from './quality-guard-source'
+import type { TypeScriptSource } from './source'
+import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import * as ts from 'typescript'
+import { isImplementedFunction, unwrapExpression } from './ast'
+import {
+  repositoryIgnoredDirNames,
+  repositoryIgnoredFileNames,
+} from './repository-paths'
 import {
   comparePositionedDiagnostics,
   parseTypeScriptSources,
   positionOf,
-  unwrapExpression,
-} from './quality-guard-source'
+} from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 对象字段内联转换诊断 */
@@ -34,8 +40,49 @@ export interface TransformedPropertyShorthandDiagnostic {
 const maxCallArgumentProperties = 6
 /** 建议开发者评估提前命名的最大派生字段数 */
 const maxInlineProjections = 4
+/** 仓库根目录 */
+const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 
 /** -------------------- 核心函数 -------------------- */
+/**
+ * 读取对象字段转换建议的仓库源码
+ */
+export function readTransformedPropertyShorthandSources() {
+  const sources: TypeScriptSource[] = []
+  /** 收集指定源码目录 */
+  const collect = (directoryPath: string) => {
+    const entries = readdirSync(directoryPath, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && repositoryIgnoredDirNames.has(entry.name))
+        continue
+
+      const absolutePath = path.join(directoryPath, entry.name)
+
+      if (entry.isDirectory()) {
+        collect(absolutePath)
+        continue
+      }
+
+      if (!entry.isFile() || !/\.tsx?$/.test(entry.name) || repositoryIgnoredFileNames.has(entry.name))
+        continue
+
+      const filePath = path.relative(repositoryRoot, absolutePath)
+        .split(path.sep)
+        .join('/')
+
+      if (filePath.includes('/src/') && !filePath.endsWith('.d.ts')) {
+        sources.push({ filePath, source: readFileSync(absolutePath, 'utf8') })
+      }
+    }
+  }
+
+  collect(path.resolve(repositoryRoot, 'packages'))
+  collect(path.resolve(repositoryRoot, 'projects'))
+  return sources.sort((left, right) => left.filePath.localeCompare(right.filePath))
+}
+
 /**
  * 检查对象字段是否内联转换同名来源
  */
@@ -285,21 +332,6 @@ function readLexicalScope(node: ts.Node) {
     current = current.parent
 
   return current
-}
-
-/**
- * 判断节点是否是具有独立变量作用域的实现函数
- */
-function isImplementedFunction(
-  node: ts.Node,
-): node is ts.FunctionLikeDeclaration {
-  return ts.isArrowFunction(node)
-    || ts.isConstructorDeclaration(node)
-    || ts.isFunctionDeclaration(node)
-    || ts.isFunctionExpression(node)
-    || ts.isGetAccessorDeclaration(node)
-    || ts.isMethodDeclaration(node)
-    || ts.isSetAccessorDeclaration(node)
 }
 
 /**

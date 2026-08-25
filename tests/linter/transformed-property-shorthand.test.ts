@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest'
-import { readRepositoryTypeScriptSources } from './quality-guards'
 import {
   formatTransformedPropertyShorthandDiagnostics,
   readTransformedPropertyShorthandDiagnostics,
+  readTransformedPropertyShorthandSources,
   warnTransformedPropertyShorthand,
 } from './transformed-property-shorthand'
 
@@ -31,13 +31,13 @@ test('对象字段转换属性简写检查器识别同名来源的内联转换',
 
   const message = [
     '对象字段转换写法建议（非强制，请结合具体语义判断）：',
-    '- invalid.fixture.ts:9:16 status 内联转换了同名来源；该建议非强制，请结合具体语义判断',
+    '- invalid.fixture.ts:10:18 status 内联转换了同名来源；该建议非强制，请结合具体语义判断',
   ].join('\n')
 
   expect(diagnostics).toEqual([{
-    column: 16,
+    column: 18,
     filePath: 'invalid.fixture.ts',
-    line: 9,
+    line: 10,
     message: 'status 内联转换了同名来源；该建议非强制，请结合具体语义判断',
     property: 'status',
   }])
@@ -237,8 +237,7 @@ test('对象字段转换属性简写检查器接受提前命名并使用属性�
 })
 
 test('真实仓库只报告建议而不加入硬失败预算', () => {
-  const sources = readRepositoryTypeScriptSources(['packages', 'projects'])
-    .filter(item => item.filePath.includes('/src/') && !item.filePath.endsWith('.d.ts'))
+  const sources = readTransformedPropertyShorthandSources()
 
   expect(() => warnTransformedPropertyShorthand(sources)).not.toThrow()
 })

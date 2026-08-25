@@ -3,6 +3,8 @@
     "@rolldown/plugin-babel": "^0.2.3",
     "@tanstack/router-plugin": "^1.139.16",
     "@vitejs/plugin-react": "^6.0.5",
-    "babel-plugin-react-compiler": "1.0.0"
+    "babel-plugin-react-compiler": "1.0.0",
+    "electronic": "^1.0.0",
+    "@example/electron": "^1.0.0"
   }
 }

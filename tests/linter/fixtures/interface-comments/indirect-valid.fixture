@@ -1,0 +1,15 @@
+/** 已记录的间接公共输入 */
+interface DocumentedInput {
+  /** 输入值 */
+  value: string
+}
+
+interface InternalState {
+  value: string
+}
+
+export { DocumentedInput as PublicInput }
+
+export function readValue(input: DocumentedInput, state: InternalState) {
+  return input.value || state.value
+}

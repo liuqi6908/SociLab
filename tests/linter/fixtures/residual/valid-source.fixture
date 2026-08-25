@@ -1,8 +1,10 @@
 import react from '@vitejs/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import electronic from 'electronic'
+import exampleElectron from '@example/electron'
 
 export interface PluginOption {
   runtimeFetch: typeof fetch
 }
 
-export const plugins = [react(), tanstackRouter()]
+export const plugins = [electronic, exampleElectron, react(), tanstackRouter()]

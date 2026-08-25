@@ -1,4 +1,4 @@
-import type { MetaModule } from '../modules/meta/index.js'
+import type { MetaModule } from '../modules/index.js'
 import { implement, ORPCError, os, ValidationError } from '@orpc/server'
 import { apiContract, ApiError } from '@socilab/api'
 

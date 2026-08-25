@@ -1,0 +1,13 @@
+import { memo } from 'react'
+
+const MemoizedValue = memo(() => 'value')
+const WrappedValue = memoize(() => 'value')
+
+export function CallbackOwner() {
+  const SelectValue = (values: string[]) => values.at(0)
+  const FormatValue = function (value: string) {
+    return value.trim()
+  }
+
+  return <span>{FormatValue(SelectValue([MemoizedValue, WrappedValue].map(String)) ?? '')}</span>
+}

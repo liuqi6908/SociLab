@@ -1,0 +1,22 @@
+export function FirstComponent() {
+  const classes = 'flex'
+
+  return <div className={classes} />
+}
+
+export function SecondComponent({ color }: { color: string }) {
+  const classes = 'bg-' + color
+
+  return <span data-class-preview={classes} />
+}
+
+export function NestedScope({ color }: { color: string }) {
+  const classes = 'grid'
+  const readPreview = () => {
+    const classes = `text-${color}`
+
+    return classes
+  }
+
+  return <div className={classes} data-preview={readPreview()} />
+}

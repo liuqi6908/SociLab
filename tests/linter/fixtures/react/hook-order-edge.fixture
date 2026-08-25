@@ -1,0 +1,21 @@
+import { useEffect, useMemo, useState } from 'react'
+
+export function SameStatementValid() {
+  const memoized = useMemo(() => 1, []), handleClick = () => memoized
+
+  return <button onClick={handleClick}>{memoized}</button>
+}
+
+export function SameStatementInvalid() {
+  const handleClick = () => 1, memoized = useMemo(() => 1, [])
+
+  return <button onClick={handleClick}>{memoized}</button>
+}
+
+export function HighestStageMustNotRollback() {
+  useEffect(() => undefined, [])
+  const [value] = useState(0)
+  const memoized = useMemo(() => value, [value])
+
+  return <span>{memoized}</span>
+}

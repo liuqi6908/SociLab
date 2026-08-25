@@ -1,0 +1,9 @@
+import { forwardRef, memo } from 'react'
+
+export const MemoComponent = memo(() => <div />)
+export const ForwardedComponent = forwardRef((_props, ref) => (
+  <div ref={ref} />
+))
+export const BlockComponent = () => {
+  return <section />
+}

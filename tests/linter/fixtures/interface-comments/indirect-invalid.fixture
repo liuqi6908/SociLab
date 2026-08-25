@@ -1,0 +1,9 @@
+interface Input {
+  value: string
+}
+
+interface AliasInput {
+  count: number
+}
+
+export { AliasInput as PublicInput, Input }

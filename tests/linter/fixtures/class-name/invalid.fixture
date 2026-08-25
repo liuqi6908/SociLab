@@ -6,6 +6,10 @@ export function InvalidClassName({ active, color }: { active: boolean; color: st
       <div className={`bg-${color}`} />
       <div className={'flex ' + (active ? 'gap-2' : '')} />
       <div className={joined} />
+      <div className={cn('flex', 'bg-' + color)} />
+      <div className={cn(`text-${color}`)} />
+      <div className={cn(['block', active && 'gap-2'].filter(Boolean).join(' '))} />
+      <div className={cn({ ['border-' + color]: active })} />
     </>
   )
 }

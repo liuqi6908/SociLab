@@ -1,0 +1,7 @@
+const classes = 'flex'
+
+export function InvalidShadowing({ color }: { color: string }) {
+  const classes = 'bg-' + color
+
+  return <div className={classes} />
+}

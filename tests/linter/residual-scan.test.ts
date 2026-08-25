@@ -23,10 +23,25 @@ it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标�
     source: readFixture('invalid-source.fixture'),
   }])
 
-  expect(diagnostics.map(item => item.value)).toEqual([
+  expect(diagnostics.filter(item => item.kind === 'module').map(item => item.value)).toEqual([
     '@qygent/agent',
     '@socilab/runtime',
     '../../thread/index',
+    'electron-builder',
+    '@electron/packager',
+    '@socilab/plugin',
+    '@socilab/thread',
+    '@socilab/agent',
+    '@socilab/electron',
+  ])
+  expect(diagnostics.filter(item => item.kind === 'module').slice(0, 3).map(item => (
+    [item.line, item.column]
+  ))).toEqual([
+    [1, 29],
+    [2, 30],
+    [3, 30],
+  ])
+  expect(diagnostics.filter(item => item.kind !== 'module').map(item => item.value)).toEqual([
     'QiyanAgent',
     'QiyanSoft',
     'Agent',
@@ -48,7 +63,9 @@ it('manifest 残留扫描分析依赖键而非原始 substring', () => {
   ).map(item => item.value)).toEqual([
     '@qygent/shared',
     '@socilab/plugin',
+    '@electron/packager',
     'electron',
+    'electron-builder',
   ])
 
   expect(readManifestResidualDiagnostics(

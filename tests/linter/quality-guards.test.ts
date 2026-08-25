@@ -40,12 +40,18 @@ describe('显式导出守卫', () => {
       'fixture.ts:missing-named-export',
       'unexported.ts:missing-named-export',
     ])
+    expect(diagnostics.slice(0, 3).map(item => [item.line, item.column])).toEqual([
+      [3, 1],
+      [4, 1],
+      [5, 1],
+    ])
   })
 
   it('接受命名导出以及无需导出的应用入口', () => {
     expect(readExplicitExportDiagnostics([
       fixture('explicit-exports/valid.fixture'),
       fixture('explicit-exports/entry.fixture', 'projects/client/src/main.tsx'),
+      fixture('explicit-exports/entry.fixture', 'projects/server/src/main.ts'),
     ])).toEqual([])
   })
 })
@@ -62,11 +68,32 @@ describe('公共 Interface JSDoc 守卫', () => {
       'MissingDocumentation:value',
       'MissingMemberDocumentation:value',
     ])
+    expect(diagnostics.map(item => [item.line, item.column])).toEqual([
+      [1, 1],
+      [2, 3],
+      [7, 3],
+    ])
   })
 
   it('接受完整公共 JSDoc 且不要求内部 Interface', () => {
     expect(readInterfaceCommentDiagnostics([
       fixture('interface-comments/valid.fixture'),
+    ])).toEqual([])
+  })
+
+  it('检查本文件命名导出和别名导出的本地 Interface', () => {
+    const diagnostics = readInterfaceCommentDiagnostics([
+      fixture('interface-comments/indirect-invalid.fixture'),
+    ])
+
+    expect(diagnostics.map(item => `${item.interfaceName}:${item.target}`)).toEqual([
+      'Input:interface',
+      'Input:value',
+      'AliasInput:interface',
+      'AliasInput:count',
+    ])
+    expect(readInterfaceCommentDiagnostics([
+      fixture('interface-comments/indirect-valid.fixture'),
     ])).toEqual([])
   })
 })
@@ -100,6 +127,24 @@ describe('模块 index 出口守卫', () => {
       fixture('react/valid.fixture', 'projects/client/src/routes/detail/page.tsx'),
     ])).toEqual([])
   })
+
+  it('从叶文件向上登记 package、project src 根与中间模块目录', () => {
+    const diagnostics = readModuleIndexDiagnostics([
+      fixture('explicit-exports/valid.fixture', 'packages/example/src/index.ts'),
+      fixture('explicit-exports/valid.fixture', 'packages/example/src/features/account/index.ts'),
+      fixture('explicit-exports/entry.fixture', 'projects/client/src/main.tsx'),
+      fixture('explicit-exports/valid.fixture', 'projects/client/src/features/settings/index.ts'),
+      fixture('explicit-exports/valid.fixture', 'projects/client/src/routes/detail/page.tsx'),
+      fixture('explicit-exports/valid.fixture', 'projects/worker/src/jobs/nightly/index.ts'),
+    ])
+
+    expect(diagnostics.map(item => item.directoryPath)).toEqual([
+      'packages/example/src/features',
+      'projects/client/src/features',
+      'projects/worker/src',
+      'projects/worker/src/jobs',
+    ])
+  })
 })
 
 /** -------------------- 类成员 -------------------- */
@@ -113,6 +158,11 @@ describe('private 成员守卫', () => {
       'value',
       'dependency',
       'read',
+    ])
+    expect(diagnostics.map(item => [item.line, item.column])).toEqual([
+      [2, 11],
+      [4, 39],
+      [6, 11],
     ])
   })
 
@@ -137,6 +187,27 @@ describe('react 组件与 Hook 顺序守卫', () => {
     ])).toEqual([])
   })
 
+  it('忽略返回普通值的 PascalCase 回调并捕获 wrapper 与 block 箭头组件', () => {
+    expect(readReactComponentDiagnostics([
+      fixture('react/component-evidence-valid.fixture', 'component-evidence-valid.tsx'),
+    ])).toEqual([])
+
+    expect(readReactComponentDiagnostics([
+      fixture('react/component-wrappers-invalid.fixture', 'component-wrappers-invalid.tsx'),
+    ]).map(item => [item.name, item.line, item.column])).toEqual([
+      ['MemoComponent', 3, 14],
+      ['ForwardedComponent', 4, 14],
+      ['BlockComponent', 7, 14],
+    ])
+    expect(readReactComponentDiagnostics([
+      fixture('react/component-wrappers-invalid.fixture', 'component-wrappers-invalid.tsx'),
+    ]).map(item => item.name)).toEqual([
+      'MemoComponent',
+      'ForwardedComponent',
+      'BlockComponent',
+    ])
+  })
+
   it('捕获 Effect 后的 state Hook 与事件函数后的 memo Hook', () => {
     const diagnostics = readReactHookOrderDiagnostics([
       fixture('react/invalid.fixture', 'fixture.tsx'),
@@ -153,6 +224,23 @@ describe('react 组件与 Hook 顺序守卫', () => {
       fixture('react/valid.fixture', 'fixture.tsx'),
     ])).toEqual([])
   })
+
+  it('按源码位置排列同一声明项并在违规后保持最高阶段', () => {
+    const diagnostics = readReactHookOrderDiagnostics([
+      fixture('react/hook-order-edge.fixture', 'hook-order-edge.tsx'),
+    ])
+
+    expect(diagnostics.map(item => `${item.scope}:${item.hookName}`)).toEqual([
+      'SameStatementInvalid:useMemo',
+      'HighestStageMustNotRollback:useState',
+      'HighestStageMustNotRollback:useMemo',
+    ])
+    expect(diagnostics.map(item => [item.line, item.column])).toEqual([
+      [10, 43],
+      [17, 19],
+      [18, 20],
+    ])
+  })
 })
 
 /** -------------------- className -------------------- */
@@ -162,10 +250,14 @@ describe('tailwind 与 className 守卫', () => {
       fixture('class-name/invalid.fixture', 'fixture.tsx'),
     ])
 
-    expect(diagnostics.map(item => item.kind)).toEqual([
-      'array-composition',
-      'dynamic-template',
-      'string-concatenation',
+    expect(diagnostics.map(item => [item.kind, item.line])).toEqual([
+      ['array-composition', 2],
+      ['dynamic-template', 6],
+      ['string-concatenation', 7],
+      ['string-concatenation', 9],
+      ['dynamic-template', 10],
+      ['array-composition', 11],
+      ['string-concatenation', 12],
     ])
   })
 
@@ -173,6 +265,16 @@ describe('tailwind 与 className 守卫', () => {
     expect(readClassNameDiagnostics([
       fixture('class-name/valid.fixture', 'fixture.tsx'),
     ])).toEqual([])
+  })
+
+  it('按使用位置解析跨组件与嵌套作用域的最近 className 绑定', () => {
+    expect(readClassNameDiagnostics([
+      fixture('class-name/shadowing-valid.fixture', 'shadowing-valid.tsx'),
+    ])).toEqual([])
+
+    expect(readClassNameDiagnostics([
+      fixture('class-name/shadowing-invalid.fixture', 'shadowing-invalid.tsx'),
+    ]).map(item => item.kind)).toEqual(['string-concatenation'])
   })
 })
 

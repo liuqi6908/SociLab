@@ -8,10 +8,14 @@ import { parseTypeScriptSources, readRepositoryTypeScriptSources } from './quali
 /** -------------------- 类型 -------------------- */
 /** 领域残留诊断 */
 export interface ResidualDiagnostic {
+  /** AST 残留诊断列号 */
+  column?: number
   /** 诊断文件 */
   filePath: string
   /** 残留类型 */
   kind: 'dependency' | 'identifier' | 'module' | 'product'
+  /** AST 残留诊断行号 */
+  line?: number
   /** 精确残留值 */
   value: string
 }
@@ -48,42 +52,36 @@ export function readSourceResidualDiagnostics(
 
   for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
     const visit = (node: ts.Node) => {
-      const moduleSpecifier = ts.isImportDeclaration(node) || ts.isExportDeclaration(node)
-        ? node.moduleSpecifier
-        : undefined
+      const moduleSpecifier = readModuleSpecifier(node)
 
-      if (moduleSpecifier && ts.isStringLiteral(moduleSpecifier)) {
-        if (isForbiddenModuleSpecifier(moduleSpecifier.text)) {
-          diagnostics.push({
-            filePath,
-            kind: 'module',
-            value: moduleSpecifier.text,
-          })
-        }
-      }
-      else if (
-        ts.isCallExpression(node)
-        && node.expression.kind === ts.SyntaxKind.ImportKeyword
-      ) {
-        const [specifier] = node.arguments
-
-        if (
-          specifier
-          && ts.isStringLiteral(specifier)
-          && isForbiddenModuleSpecifier(specifier.text)
-        ) {
-          diagnostics.push({ filePath, kind: 'module', value: specifier.text })
-        }
+      if (moduleSpecifier && isForbiddenModuleSpecifier(moduleSpecifier.value)) {
+        diagnostics.push({
+          ...positionOf(sourceFile, moduleSpecifier.node),
+          filePath,
+          kind: 'module',
+          value: moduleSpecifier.value,
+        })
       }
 
-      if (ts.isIdentifier(node) && forbiddenIdentifierNames.has(node.text))
-        diagnostics.push({ filePath, kind: 'identifier', value: node.text })
+      if (ts.isIdentifier(node) && forbiddenIdentifierNames.has(node.text)) {
+        diagnostics.push({
+          ...positionOf(sourceFile, node),
+          filePath,
+          kind: 'identifier',
+          value: node.text,
+        })
+      }
 
       if (
         ts.isStringLiteralLike(node)
         && /\b(?:QiyanAgent|QiyanSoft)\b/.test(node.text)
       ) {
-        diagnostics.push({ filePath, kind: 'product', value: node.text })
+        diagnostics.push({
+          ...positionOf(sourceFile, node),
+          filePath,
+          kind: 'product',
+          value: node.text,
+        })
       }
 
       node.forEachChild(visit)
@@ -157,7 +155,7 @@ function isForbiddenModuleSpecifier(specifier: string) {
   if (/^@socilab\/(?:agent|electron|plugin|runtime|thread)(?:\/|$)/.test(specifier))
     return true
 
-  if (/^electron(?:\/|$)/.test(specifier))
+  if (isElectronPackage(specifier))
     return true
 
   if (!specifier.startsWith('.'))
@@ -167,9 +165,49 @@ function isForbiddenModuleSpecifier(specifier: string) {
 }
 
 function isForbiddenDependency(name: string) {
-  return name === 'electron'
+  return isElectronPackage(name)
     || /^@qygent(?:\/|$)/.test(name)
     || /^@socilab\/(?:agent|electron|plugin|runtime|thread)(?:\/|$)/.test(name)
+}
+
+function readModuleSpecifier(node: ts.Node) {
+  if (
+    (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+    && node.moduleSpecifier
+    && ts.isStringLiteral(node.moduleSpecifier)
+  ) {
+    return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
+  }
+
+  if (ts.isImportEqualsDeclaration(node)) {
+    const reference = node.moduleReference
+
+    if (ts.isExternalModuleReference(reference) && ts.isStringLiteral(reference.expression))
+      return { node: reference.expression, value: reference.expression.text }
+  }
+
+  if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+    const literal = node.argument.literal
+
+    if (ts.isStringLiteral(literal))
+      return { node: literal, value: literal.text }
+  }
+
+  if (!ts.isCallExpression(node))
+    return
+
+  const staticModuleCall = node.expression.kind === ts.SyntaxKind.ImportKeyword
+    || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
+  const [specifier] = node.arguments
+
+  if (staticModuleCall && specifier && ts.isStringLiteral(specifier))
+    return { node: specifier, value: specifier.text }
+}
+
+function isElectronPackage(name: string) {
+  return name === 'electron'
+    || name.startsWith('electron-')
+    || /^@electron\/[^/]+(?:\/|$)/.test(name)
 }
 
 function readRepositoryManifestPaths(root: string) {
@@ -205,7 +243,13 @@ function uniqueDiagnostics(diagnostics: readonly ResidualDiagnostic[]) {
   const seen = new Set<string>()
 
   return diagnostics.filter((diagnostic) => {
-    const key = `${diagnostic.filePath}\0${diagnostic.kind}\0${diagnostic.value}`
+    const key = [
+      diagnostic.filePath,
+      diagnostic.kind,
+      diagnostic.value,
+      diagnostic.line,
+      diagnostic.column,
+    ].join('\0')
 
     if (seen.has(key))
       return false
@@ -217,4 +261,13 @@ function uniqueDiagnostics(diagnostics: readonly ResidualDiagnostic[]) {
 
 function toPosixPath(filePath: string) {
   return filePath.split(path.sep).join('/')
+}
+
+function positionOf(sourceFile: ts.SourceFile, node: ts.Node) {
+  const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+
+  return {
+    column: position.character + 1,
+    line: position.line + 1,
+  }
 }

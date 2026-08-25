@@ -1,8 +1,8 @@
-import type { MetaModuleOptions } from '../modules/meta/index.js'
+import type { MetaModuleOptions } from '../modules/index.js'
 import { API_BASE_PATH } from '@socilab/api'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { createMetaModule } from '../modules/meta/index.js'
+import { createMetaModule } from '../modules/index.js'
 import { registerApiProtocols } from './orpc.js'
 import { createApiRouter } from './router.js'
 

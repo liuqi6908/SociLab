@@ -20,6 +20,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['tests/{client,admin}/**/*.test.{ts,tsx}', 'jsdom'],
     ],
+    globalSetup: ['./tests/linter/global-setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}'],
     maxWorkers: 4,
   },

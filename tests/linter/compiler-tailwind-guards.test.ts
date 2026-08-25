@@ -12,6 +12,7 @@ import {
   readTailwindSources,
 } from './tailwind'
 import {
+  formatTransformedPropertyShorthandDiagnostics,
   readTransformedPropertyShorthandDiagnostics,
   warnTransformedPropertyShorthand,
 } from './transformed-property-shorthand'
@@ -101,22 +102,77 @@ describe('真实 Tailwind 守卫', () => {
 
 /** -------------------- Warning -------------------- */
 describe('对象字段转换属性简写 warning', () => {
-  it('发现同名来源的内联转换但不硬失败', async () => {
+  it('发现同名来源的内联转换并报告完整 warning', () => {
     const warnings: string[] = []
     const sources = [fixture('transformed-property-shorthand/invalid.fixture.ts')]
 
-    const diagnostics = await warnTransformedPropertyShorthand(
+    const diagnostics = warnTransformedPropertyShorthand(
       sources,
       message => warnings.push(message),
     )
+    const message = [
+      '对象字段转换写法建议（非强制，请结合具体语义判断）：',
+      [
+        '- transformed-property-shorthand/invalid.fixture.ts:9:12 ',
+        'status 内联转换了同名来源；该建议非强制，请结合具体语义判断',
+      ].join(''),
+    ].join('\n')
 
-    expect(diagnostics.map(item => item.property)).toEqual(['status'])
-    expect(warnings).toHaveLength(1)
-    expect(warnings[0]).toContain('非强制')
+    expect(diagnostics).toEqual([{
+      column: 12,
+      filePath: 'transformed-property-shorthand/invalid.fixture.ts',
+      line: 9,
+      message: 'status 内联转换了同名来源；该建议非强制，请结合具体语义判断',
+      property: 'status',
+    }])
+    expect(formatTransformedPropertyShorthandDiagnostics(diagnostics)).toBe(message)
+    expect(warnings).toEqual([message])
   })
 
-  it('接受提前命名并使用属性简写', async () => {
-    const diagnostics = await readTransformedPropertyShorthandDiagnostics([
+  it('提示同作用域原字段与返回别名冲突', () => {
+    const diagnostics = readTransformedPropertyShorthandDiagnostics([
+      fixture('transformed-property-shorthand/alias-return-invalid.fixture.ts'),
+    ])
+
+    expect(diagnostics.map(item => `${item.property}: ${item.message}`)).toEqual([
+      [
+        'threadId: threadId 返回字段映射了 selectedThreadId，且同一作用域已有 threadId',
+        '；可将前序临时绑定命名为 _threadId，让最终值使用属性简写',
+        '；该建议非强制，请结合具体语义判断',
+      ].join(''),
+    ])
+  })
+
+  it('提示小型返回对象混合直接读取与内联派生', () => {
+    const diagnostics = readTransformedPropertyShorthandDiagnostics([
+      fixture('transformed-property-shorthand/mixed-return-invalid.fixture.ts'),
+    ])
+
+    expect(diagnostics.map(item => `${item.property}: ${item.message}`)).toEqual([
+      [
+        'label: label、status、pending 在返回对象中内联读取或派生',
+        '；若拆分能提升可读性，可考虑提前命名',
+        '；该建议非强制，请结合具体语义判断',
+      ].join(''),
+    ])
+  })
+
+  it('提示小型调用对象混合属性简写与内联派生', () => {
+    const diagnostics = readTransformedPropertyShorthandDiagnostics([
+      fixture('transformed-property-shorthand/mixed-call-invalid.fixture.ts'),
+    ])
+
+    expect(diagnostics.map(item => `${item.property}: ${item.message}`)).toEqual([
+      [
+        'hidden: hidden、owner 在调用参数对象中内联读取或派生',
+        '；若拆分能提升可读性，可考虑将 1–4 个关键派生值提前命名',
+        '；该建议非强制，请结合具体语义判断',
+      ].join(''),
+    ])
+  })
+
+  it('接受提前命名并使用属性简写', () => {
+    const diagnostics = readTransformedPropertyShorthandDiagnostics([
       fixture('transformed-property-shorthand/valid.fixture.ts'),
     ])
 
@@ -124,14 +180,9 @@ describe('对象字段转换属性简写 warning', () => {
   })
 
   it('真实仓库只报告建议而不加入硬失败预算', () => {
-    const warnings: string[] = []
     const sources = readRepositoryTypeScriptSources(['packages', 'projects'])
       .filter(item => item.filePath.includes('/src/') && !item.filePath.endsWith('.d.ts'))
-    const diagnostics = warnTransformedPropertyShorthand(
-      sources,
-      message => warnings.push(message),
-    )
 
-    expect(warnings).toHaveLength(diagnostics.length > 0 ? 1 : 0)
+    expect(() => warnTransformedPropertyShorthand(sources)).not.toThrow()
   })
 })

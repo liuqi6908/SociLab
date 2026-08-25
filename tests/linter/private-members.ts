@@ -1,10 +1,6 @@
 import type { TypeScriptSource } from './source'
 import * as ts from 'typescript'
-import {
-  comparePositionedDiagnostics,
-  parseTypeScriptSources,
-  positionOf,
-} from './source'
+import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** private 成员命名诊断 */

@@ -3,12 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import * as ts from 'typescript'
 import { unwrapExpression } from './ast'
-import {
-  parseTypeScriptSources,
-  positionOf,
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-} from './source'
+import { parseTypeScriptSources, positionOf, repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** React Hook 阶段顺序诊断 */

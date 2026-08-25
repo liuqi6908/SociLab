@@ -1,15 +1,7 @@
-/**
- * 源实现来自内部参考仓库 9da43edf 的 tests/linter/deprecated-api.ts
- * 原实现读取 Language Service suggestion，本项目改用 TypeScript 6 公共同步 API
- * 本守卫不涉及响应式依赖、回调更新或 SSR/浏览器生命周期，失败统一返回源码诊断
- */
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
 import * as ts from 'typescript'
-import {
-  comparePositionedDiagnostics,
-  createVirtualTypeScriptPathHost,
-} from './source'
+import { comparePositionedDiagnostics, createVirtualTypeScriptPathHost } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 废弃 API 使用诊断 */

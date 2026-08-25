@@ -1,10 +1,6 @@
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
-import {
-  parseTypeScriptSources,
-  readModuleSpecifier,
-
-} from './source'
+import { parseTypeScriptSources, readModuleSpecifier } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 测试文件规模与领域依赖诊断 */

@@ -4,10 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { transformSync } from '@babel/core'
 import reactCompiler from 'babel-plugin-react-compiler'
-import {
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-} from './source'
+import { repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** React Compiler 失败诊断 */

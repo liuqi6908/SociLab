@@ -1,19 +1,8 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  utimesSync,
-  writeFileSync,
-} from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, it } from 'vitest'
-import {
-  readRepositoryGuardInputs,
-  runCachedRepositoryGuards,
-} from './cache'
+import { readRepositoryGuardInputs, runCachedRepositoryGuards } from './cache'
 
 /** -------------------- 测试工具 -------------------- */
 /**

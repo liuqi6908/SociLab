@@ -1,11 +1,7 @@
 import type { TypeScriptSource } from './source'
 import * as ts from 'typescript'
 import { unwrapExpression } from './ast'
-import {
-  comparePositionedDiagnostics,
-  parseTypeScriptSources,
-  positionOf,
-} from './source'
+import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 自定义 Hook 模块边界诊断 */

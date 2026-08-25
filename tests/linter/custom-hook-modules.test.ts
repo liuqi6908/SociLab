@@ -1,11 +1,8 @@
-import { expect, test } from 'vitest'
-import {
-  formatCustomHookModuleDiagnostics,
-  readCustomHookModuleDiagnostics,
-} from './custom-hook-modules'
+import { expect, it } from 'vitest'
+import { formatCustomHookModuleDiagnostics, readCustomHookModuleDiagnostics } from './custom-hook-modules'
 
 /** -------------------- 测试 -------------------- */
-test('自定义 Hook 模块边界检查器识别 JSX 模块中的函数、变量与嵌套实现', () => {
+it('自定义 Hook 模块边界检查器识别 JSX 模块中的函数、变量与嵌套实现', () => {
   const diagnostics = readCustomHookModuleDiagnostics([
     {
       filePath: 'component.tsx',
@@ -45,7 +42,7 @@ test('自定义 Hook 模块边界检查器识别 JSX 模块中的函数、变量
     .toContain('应拆到 hooks.ts、hooks/ 或其他非 JSX 模块')
 })
 
-test('自定义 Hook 模块边界检查器接受组件内调用与非 JSX 实现', () => {
+it('自定义 Hook 模块边界检查器接受组件内调用与非 JSX 实现', () => {
   expect(readCustomHookModuleDiagnostics([
     {
       filePath: 'component.tsx',

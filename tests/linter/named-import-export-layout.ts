@@ -1,15 +1,6 @@
-/**
- * 源实现来自内部参考仓库 9da43edf 的 tests/linter/named-import-export-layout.ts
- * 原实现遍历 TypeScript AST，本项目改用 TypeScript 6 公共 AST 与既有解析边界
- * 本守卫不涉及响应式依赖、回调更新或 SSR/浏览器生命周期，失败统一返回布局诊断
- */
 import type { TypeScriptSource } from './source'
 import * as ts from 'typescript'
-import {
-  comparePositionedDiagnostics,
-  parseTypeScriptSources,
-  positionOf,
-} from './source'
+import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 命名导入或导出换行诊断 */

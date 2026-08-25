@@ -1,20 +1,8 @@
 import { createHash } from 'node:crypto'
-import {
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  renameSync,
-  rmdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import {
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-  repositoryRoot,
-} from './source'
+import { repositoryIgnoredDirNames, repositoryIgnoredFileNames, repositoryRoot } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 全仓守卫缓存输入 */

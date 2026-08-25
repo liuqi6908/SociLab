@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  formatModuleDirectoryLayoutDiagnostics,
-  readModuleDirectoryLayoutDiagnostics,
-} from './module-directory-layout'
+import { formatModuleDirectoryLayoutDiagnostics, readModuleDirectoryLayoutDiagnostics } from './module-directory-layout'
 
 /** -------------------- 测试 -------------------- */
 describe('模块目录布局守卫', () => {

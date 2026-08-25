@@ -1,8 +1,5 @@
 import type { TypeScriptSource } from './source'
-import {
-  readRepositoryGuardInputs,
-  runCachedRepositoryGuards,
-} from './cache'
+import { readRepositoryGuardInputs, runCachedRepositoryGuards } from './cache'
 import { assertClassNameComposition } from './class-name-composition'
 import { assertCustomHookModules } from './custom-hook-modules'
 import { assertNoDeprecatedApis } from './deprecated-api'
@@ -17,10 +14,7 @@ import { assertReactComponentDeclarations } from './react-component-declarations
 import { assertReactHookOrder } from './react-hooks'
 import { scanRepositoryResiduals } from './residual-scan'
 import { readTypeScriptSources } from './source'
-import {
-  assertTailwindCanonicalClasses,
-  assertTailwindCssConflicts,
-} from './tailwind-canonical'
+import { assertTailwindCanonicalClasses, assertTailwindCssConflicts } from './tailwind-canonical'
 import { assertTestStructure } from './test-structure'
 import { warnTransformedPropertyShorthand } from './transformed-property-shorthand'
 
@@ -79,7 +73,9 @@ export async function runRepositoryGuards(root: string) {
       { name: 'transformed-property-shorthand', run: () => warnTransformedPropertyShorthand(productionSources) },
       { name: 'residual-scan', run: () => assertNoRepositoryResiduals(root) },
     ]
-    const results = await Promise.allSettled(guards.map(guard => guard.run()))
+    const results = await Promise.allSettled(guards.map(guard => (
+      Promise.resolve().then(() => guard.run())
+    )))
     const diagnostics = results.flatMap((result, index) => (
       result.status === 'rejected'
         ? [`${guards[index]!.name}: ${readErrorMessage(result.reason)}`]

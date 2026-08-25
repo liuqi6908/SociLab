@@ -3,11 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { __unstable__loadDesignSystem } from 'tailwindcss'
 import * as ts from 'typescript'
-import {
-  parseTypeScriptSources,
-  repositoryIgnoredDirNames,
-  repositoryIgnoredFileNames,
-} from './source'
+import { parseTypeScriptSources, repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** Tailwind canonical utility 诊断 */

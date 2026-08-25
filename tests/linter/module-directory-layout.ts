@@ -1,9 +1,6 @@
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
-import {
-  isProjectModuleCollection,
-  isTanStackRoutesDirectory,
-} from './source'
+import { isProjectModuleCollection, isTanStackRoutesDirectory } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 模块目录职责布局诊断 */

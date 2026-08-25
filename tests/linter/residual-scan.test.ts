@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, it } from 'vitest'
@@ -10,12 +10,10 @@ import {
 
 // cspell:ignore qygent Qiyan
 
-/** -------------------- 测试夹具 -------------------- */
-const fixtureRoot = path.resolve(import.meta.dirname, 'fixtures/residual')
-
-function readFixture(name: string) {
-  return readFileSync(path.join(fixtureRoot, name), 'utf8')
-}
+/** -------------------- 测试工具 -------------------- */
+const legacyProductAgent = ['Qiyan', 'Agent'].join('')
+const legacyProductSoft = ['Qiyan', 'Soft'].join('')
+const templateDomainInterpolation = '${' + 'domain}'
 
 function writeRepositoryFiles(root: string, files: Readonly<Record<string, string>>) {
   for (const [filePath, source] of Object.entries(files)) {
@@ -30,7 +28,38 @@ function writeRepositoryFiles(root: string, files: Readonly<Record<string, strin
 it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标识', () => {
   const diagnostics = readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/invalid.ts',
-    source: readFixture('invalid-source.fixture'),
+    source: [
+      'import agentPackage from \'@qygent/agent\'',
+      'import runtimePackage from \'@socilab/runtime\'',
+      'import threadModule from \'../../thread/index\'',
+      'import electronBuilder from \'electron-builder\'',
+      'import electronPackager from \'@electron/packager\'',
+      'import electronMain from \'electron/main\'',
+      'import pluginPackage from \'@socilab/plugin\'',
+      'import threadPackage from \'@socilab/thread\'',
+      'import socilabAgentPackage from \'@socilab/agent\'',
+      'import socilabElectronPackage from \'@socilab/electron\'',
+      'import electronRenderer from \'electron/renderer\'',
+      '',
+      `const productAgent = ${JSON.stringify(legacyProductAgent)}`,
+      `const productSoft = ${JSON.stringify(legacyProductSoft)}`,
+      'const Agent = true',
+      'const Electron = true',
+      '',
+      'export {',
+      '  agentPackage,',
+      '  runtimePackage,',
+      '  threadModule,',
+      '  electronBuilder,',
+      '  electronPackager,',
+      '  electronMain,',
+      '  pluginPackage,',
+      '  threadPackage,',
+      '  socilabAgentPackage,',
+      '  socilabElectronPackage,',
+      '  electronRenderer,',
+      '}',
+    ].join('\n'),
   }])
 
   expect(diagnostics.filter(item => item.kind === 'module').map(item => item.value)).toEqual([
@@ -49,9 +78,9 @@ it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标�
   expect(diagnostics.filter(item => item.kind === 'module').slice(0, 3).map(item => (
     [item.line, item.column]
   ))).toEqual([
-    [1, 29],
-    [2, 30],
-    [3, 30],
+    [1, 26],
+    [2, 28],
+    [3, 26],
   ])
   expect(diagnostics.filter(item => item.kind !== 'module').map(item => item.value)).toEqual([
     ['Qiyan', 'Agent'].join(''),
@@ -64,14 +93,29 @@ it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标�
 it('源码残留扫描允许生态插件包与普通复合技术词', () => {
   expect(readSourceResidualDiagnostics([{
     filePath: 'vite.config.ts',
-    source: readFixture('valid-source.fixture'),
+    source: [
+      'import { TanStackRouterVite } from \'@tanstack/router-plugin\'',
+      'import react from \'@vitejs/plugin-react\'',
+      '',
+      'const electronLike = \'electronish\'',
+      'const pluginName = \'router-plugin\'',
+      '',
+      'export default [TanStackRouterVite(), react(), electronLike, pluginName]',
+    ].join('\n'),
   }])).toEqual([])
 })
 
 it('源码残留扫描识别无替换模板说明符且忽略表达式模板', () => {
   const diagnostics = readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/template-modules.ts',
-    source: readFixture('template-modules.fixture'),
+    source: [
+      'const pluginModule = import(`@socilab/plugin`)',
+      'const runtimeModule = require(`../../runtime/index`)',
+      'const domain = \'thread\'',
+      `const unknownModule = import(\`../../${templateDomainInterpolation}/index\`)`,
+      '',
+      'export { pluginModule, runtimeModule, unknownModule }',
+    ].join('\n'),
   }])
 
   expect(diagnostics.filter(item => item.kind === 'module').map(item => item.value))
@@ -81,7 +125,22 @@ it('源码残留扫描识别无替换模板说明符且忽略表达式模板', (
 it('manifest 残留扫描分析依赖键而非原始 substring', () => {
   expect(readManifestResidualDiagnostics(
     'fixtures/invalid/package.json',
-    readFixture('invalid-manifest.fixture'),
+    JSON.stringify({
+      dependencies: {
+        '@qygent/shared': 'workspace:*',
+        '@socilab/plugin': 'workspace:*',
+      },
+      devDependencies: {
+        '@electron/packager': '^1.0.0',
+        'electron': '^1.0.0',
+      },
+      optionalDependencies: {
+        'electron/renderer': '^1.0.0',
+      },
+      scripts: {
+        legacy: 'electron-builder',
+      },
+    }),
   ).map(item => item.value)).toEqual([
     '@qygent/shared',
     '@socilab/plugin',
@@ -93,7 +152,14 @@ it('manifest 残留扫描分析依赖键而非原始 substring', () => {
 
   expect(readManifestResidualDiagnostics(
     'fixtures/valid/package.json',
-    readFixture('valid-manifest.fixture'),
+    JSON.stringify({
+      dependencies: {
+        '@tanstack/router-plugin': '^1.0.0',
+      },
+      scripts: {
+        build: 'vite build',
+      },
+    }),
   )).toEqual([])
 })
 

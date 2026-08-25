@@ -4,6 +4,7 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -47,6 +48,10 @@ const rootGuardInputNames = new Set([
   'pnpm-workspace.yaml',
   'turbo.json',
 ])
+/** 并发守卫等待锁释放的轮询间隔 */
+const repositoryGuardLockPollMs = 10
+/** 当前进程内活跃的同摘要守卫运行 */
+const activeRepositoryGuardRuns = new Map<string, Promise<void>>()
 
 /** -------------------- 核心函数 -------------------- */
 /**
@@ -128,34 +133,29 @@ export async function runCachedRepositoryGuards(
   const cacheDir = path.join(root, '.cache/tests/linter')
   const cachePath = path.join(cacheDir, 'guard.json')
   const digest = createRepositoryGuardDigest(inputs)
+  const runKey = `${cachePath}\0${digest}`
+
+  if (hasMatchingRepositoryGuardCache(cachePath, digest))
+    return
+
+  const activeRun = activeRepositoryGuardRuns.get(runKey)
+
+  if (activeRun)
+    return activeRun
+
+  const running = runCachedRepositoryGuardsWithLock(
+    cacheDir,
+    cachePath,
+    digest,
+    run,
+  )
+  activeRepositoryGuardRuns.set(runKey, running)
 
   try {
-    const cache: unknown = JSON.parse(readFileSync(cachePath, 'utf8'))
-
-    if (
-      isRepositoryGuardCache(cache)
-      && cache.version === repositoryGuardCacheVersion
-      && cache.digest === digest
-    ) {
-      return
-    }
-  }
-  catch {}
-
-  await run()
-  mkdirSync(cacheDir, { recursive: true })
-
-  const temporaryPath = `${cachePath}.${process.pid}.tmp`
-
-  try {
-    writeFileSync(temporaryPath, JSON.stringify({
-      digest,
-      version: repositoryGuardCacheVersion,
-    }))
-    renameSync(temporaryPath, cachePath)
+    await running
   }
   finally {
-    rmSync(temporaryPath, { force: true })
+    activeRepositoryGuardRuns.delete(runKey)
   }
 }
 
@@ -223,4 +223,94 @@ function isRepositoryGuardCache(value: unknown): value is RepositoryGuardCache {
  */
 function toPosixPath(filePath: string) {
   return filePath.split(path.sep).join('/')
+}
+
+/**
+ * 在锁保护下运行守卫并写入成功缓存
+ */
+async function runCachedRepositoryGuardsWithLock(
+  cacheDir: string,
+  cachePath: string,
+  digest: string,
+  run: () => void | Promise<void>,
+) {
+  mkdirSync(cacheDir, { recursive: true })
+
+  const lockDir = `${cachePath}.lock`
+
+  await acquireRepositoryGuardLock(lockDir, cachePath, digest)
+
+  if (hasMatchingRepositoryGuardCache(cachePath, digest)) {
+    releaseRepositoryGuardLock(lockDir)
+    return
+  }
+
+  const temporaryPath = `${cachePath}.${process.pid}.tmp`
+
+  try {
+    await run()
+    writeFileSync(temporaryPath, JSON.stringify({
+      digest,
+      version: repositoryGuardCacheVersion,
+    }))
+    renameSync(temporaryPath, cachePath)
+  }
+  finally {
+    rmSync(temporaryPath, { force: true })
+    releaseRepositoryGuardLock(lockDir)
+  }
+}
+
+/**
+ * 获取同一缓存文件的独占写入锁
+ */
+async function acquireRepositoryGuardLock(
+  lockDir: string,
+  cachePath: string,
+  digest: string,
+) {
+  while (true) {
+    try {
+      mkdirSync(lockDir)
+      return
+    }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST')
+        throw error
+
+      if (hasMatchingRepositoryGuardCache(cachePath, digest))
+        return
+
+      await new Promise(resolve => setTimeout(resolve, repositoryGuardLockPollMs))
+    }
+  }
+}
+
+/**
+ * 读取成功缓存并判断当前输入是否已命中
+ */
+function hasMatchingRepositoryGuardCache(cachePath: string, digest: string) {
+  try {
+    const cache: unknown = JSON.parse(readFileSync(cachePath, 'utf8'))
+
+    return isRepositoryGuardCache(cache)
+      && cache.version === repositoryGuardCacheVersion
+      && cache.digest === digest
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * 释放守卫缓存锁目录
+ */
+function releaseRepositoryGuardLock(lockDir: string) {
+  try {
+    rmdirSync(lockDir)
+  }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+      throw error
+  }
 }

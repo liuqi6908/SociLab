@@ -1,6 +1,7 @@
 import {
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   rmSync,
   statSync,
   utimesSync,
@@ -92,9 +93,8 @@ it('缓存输入覆盖源码、两端构建路由、共享样式与工程配置�
   }
 })
 
-it('缓存由输入内容失效且不依赖 mtime 变化', async () => {
+it('缓存首次运行后命中相同输入', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-'))
-  const sourcePath = path.join(root, 'packages/example/src/index.ts')
   let runCount = 0
 
   try {
@@ -102,14 +102,36 @@ it('缓存由输入内容失效且不依赖 mtime 变化', async () => {
       'package.json': '{}',
       'packages/example/src/index.ts': 'export const value = 1\n',
     })
-    const timestamp = statSync(sourcePath)
 
     for (let index = 0; index < 2; index++) {
       await runCachedRepositoryGuards(readRepositoryGuardInputs(root), () => {
         runCount += 1
       }, root)
     }
+
     expect(runCount).toBe(1)
+  }
+  finally {
+    rmSync(root, { force: true, recursive: true })
+  }
+})
+
+it('缓存会因源码与受控输入变化失效且不依赖 mtime 变化', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-invalidation-'))
+  const sourcePath = path.join(root, 'packages/example/src/index.ts')
+  let runCount = 0
+
+  try {
+    writeRepositoryFiles(root, {
+      '.npmrc': 'engine-strict=true\n',
+      'package.json': '{}',
+      'packages/example/src/index.ts': 'export const value = 1\n',
+    })
+    const timestamp = statSync(sourcePath)
+
+    await runCachedRepositoryGuards(readRepositoryGuardInputs(root), () => {
+      runCount += 1
+    }, root)
 
     writeFileSync(sourcePath, 'export const value = 2\n')
     utimesSync(sourcePath, timestamp.atime, timestamp.mtime)
@@ -117,7 +139,12 @@ it('缓存由输入内容失效且不依赖 mtime 变化', async () => {
       runCount += 1
     }, root)
 
-    expect(runCount).toBe(2)
+    writeFileSync(path.join(root, '.npmrc'), 'engine-strict=false\n')
+    await runCachedRepositoryGuards(readRepositoryGuardInputs(root), () => {
+      runCount += 1
+    }, root)
+
+    expect(runCount).toBe(3)
   }
   finally {
     rmSync(root, { force: true, recursive: true })
@@ -142,6 +169,45 @@ it('失败的全仓守卫不会写入成功缓存', async () => {
     }, root)
 
     expect(runCount).toBe(2)
+  }
+  finally {
+    rmSync(root, { force: true, recursive: true })
+  }
+})
+
+it('并发命中同一输入时只执行一次并清理锁目录', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-concurrent-'))
+  let resolveRun!: () => void
+  let runCount = 0
+
+  try {
+    writeRepositoryFiles(root, {
+      'package.json': '{}',
+      'packages/example/src/index.ts': 'export const value = 1\n',
+    })
+    const inputs = readRepositoryGuardInputs(root)
+    const firstRun = runCachedRepositoryGuards(inputs, async () => {
+      runCount += 1
+      await new Promise<void>((resolve) => {
+        resolveRun = resolve
+      })
+    }, root)
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    const secondRun = runCachedRepositoryGuards(inputs, () => {
+      runCount += 1
+    }, root)
+
+    expect(runCount).toBe(1)
+
+    resolveRun()
+    await Promise.all([firstRun, secondRun])
+
+    expect(runCount).toBe(1)
+    expect(readdirSync(path.join(root, '.cache/tests/linter'))).toEqual([
+      'guard.json',
+    ])
   }
   finally {
     rmSync(root, { force: true, recursive: true })

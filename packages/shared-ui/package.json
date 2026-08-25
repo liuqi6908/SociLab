@@ -15,6 +15,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "vitest --root ../.. run tests/shared-ui",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

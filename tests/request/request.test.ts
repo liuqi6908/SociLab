@@ -21,6 +21,34 @@ describe('create request', () => {
     expect(result).toBe(response)
   })
 
+  it('keeps absolute URLs and call-site RequestInit semantics', async () => {
+    const controller = new AbortController()
+    let received: Request | undefined
+    const request = createRequest({
+      baseUrl: 'https://api.example.test/root',
+      fetch: (input, init) => {
+        received = new Request(input, init)
+        return Promise.resolve(Response.json({ ok: true }))
+      },
+    })
+
+    await request.fetch('https://external.example.test/items?scope=shared', {
+      body: JSON.stringify({ enabled: true }),
+      headers: { 'content-type': 'application/json', 'x-request-id': 'request-1' },
+      method: 'POST',
+      signal: controller.signal,
+    })
+
+    expect(received?.url).toBe('https://external.example.test/items?scope=shared')
+    expect(received?.method).toBe('POST')
+    expect(received?.headers.get('content-type')).toBe('application/json')
+    expect(received?.headers.get('x-request-id')).toBe('request-1')
+    await expect(received?.text()).resolves.toBe('{"enabled":true}')
+    expect(received?.signal.aborted).toBe(false)
+    controller.abort()
+    expect(received?.signal.aborted).toBe(true)
+  })
+
   it('normalizes a JSON error response into an HttpError with business context', async () => {
     const request = createRequest({
       baseUrl: 'https://api.example.test',

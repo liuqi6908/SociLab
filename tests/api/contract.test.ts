@@ -1,9 +1,14 @@
+import { isContractProcedure } from '@orpc/contract'
 import { OpenAPIGenerator } from '@orpc/openapi'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
 import { API_BASE_PATH, API_RPC_PATH, apiContract, ApiError, emptyInputSchema, metaInfoSchema } from '@socilab/api'
 import { describe, expect, it } from 'vitest'
 
 describe('api contract', () => {
+  it('仅公开 meta.info procedure', () => {
+    expect(listProcedures(apiContract)).toEqual(['meta.info'])
+  })
+
   it('rejects an invalid service version while exposing the same OpenAPI output shape', async () => {
     expect(metaInfoSchema.safeParse({ name: 'SociLab', version: '0.1.1' }).success).toBe(false)
     expect(metaInfoSchema.parse({ name: 'SociLab', version: '0.1.0' })).toEqual({
@@ -45,6 +50,21 @@ describe('api contract', () => {
     })
   })
 
+  it('仅为 meta.info 暴露 OpenAPI GET 方法', async () => {
+    const document = await new OpenAPIGenerator({
+      schemaConverters: [new ZodToJsonSchemaConverter()],
+    }).generate(apiContract, {
+      info: { title: 'SociLab', version: '0.1.0' },
+    })
+    const methods = Object.entries(document.paths ?? {}).flatMap(([path, item]) => (
+      Object.keys(item ?? {})
+        .filter(method => ['delete', 'get', 'patch', 'post', 'put'].includes(method))
+        .map(method => `${method.toUpperCase()} ${path}`)
+    ))
+
+    expect(methods).toEqual(['GET /meta/info'])
+  })
+
   it('rejects undeclared meta.info input fields in runtime and OpenAPI contracts', async () => {
     expect(emptyInputSchema.safeParse({ unexpected: true }).success).toBe(false)
 
@@ -80,3 +100,18 @@ describe('api contract', () => {
     })
   })
 })
+
+/** -------------------- 内部函数 -------------------- */
+/** 递归列出契约中公开的 procedure 路径 */
+function listProcedures(router: object, prefix: string[] = []): string[] {
+  return Object.entries(router).flatMap(([key, value]) => {
+    const path = [...prefix, key]
+
+    if (isContractProcedure(value))
+      return [path.join('.')]
+    if (typeof value !== 'object' || value === null)
+      return []
+
+    return listProcedures(value, path)
+  }).sort()
+}

@@ -35,6 +35,12 @@ function LifecycleProbe({ instances }: { instances: ProviderInstance[] }) {
   return null
 }
 
+/** 验证 useApi 的 Provider 边界 */
+function ApiProbe() {
+  useApi()
+  return null
+}
+
 beforeAll(() => {
   window.scrollTo = () => undefined
 })
@@ -69,6 +75,25 @@ describe('client web shell', () => {
     )
 
     expect(await screen.findByText('连接成功：SociLab 0.1.0')).toBeInTheDocument()
+  })
+
+  it('未显式配置服务地址时使用当前页面 origin', async () => {
+    let requestUrl = ''
+
+    render(
+      <App
+        fetch={(input, init) => {
+          requestUrl = new Request(input, init).url
+          return Promise.resolve(createSuccessResponse())
+        }}
+      />,
+    )
+
+    await waitFor(() => expect(requestUrl).toBe(`${window.location.origin}/api/rpc/meta/info`))
+  })
+
+  it('在 Provider 外调用 useApi 时提供明确错误边界', () => {
+    expect(() => render(<ApiProbe />)).toThrow('客户端请求能力必须在 Provider 内使用')
   })
 
   it('以相同 props 重渲染时复用 QueryClient 与 SDK 查询能力', () => {

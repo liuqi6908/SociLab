@@ -77,4 +77,51 @@ describe('sdk client', () => {
       ],
     })
   })
+
+  it('isolates query keys by base URL and keeps query utility keys consistent', () => {
+    const first = Client.create({ baseUrl: 'https://first.example.test/' }).createApiQueryUtils()
+    const second = Client.create({ baseUrl: 'https://second.example.test/' }).createApiQueryUtils()
+    const firstKey = first.meta.info.queryKey()
+    const secondKey = second.meta.info.queryKey()
+
+    expect(firstKey).toEqual([
+      ['https://first.example.test', 'meta', 'info'],
+      { type: 'query' },
+    ])
+    expect(secondKey).toEqual([
+      ['https://second.example.test', 'meta', 'info'],
+      { type: 'query' },
+    ])
+    expect(firstKey).not.toEqual(secondKey)
+    expect(first.meta.info.key({ type: 'query' })).toEqual(firstKey)
+  })
+
+  it('forwards AbortSignal through the typed oRPC transport', async () => {
+    const controller = new AbortController()
+    let receivedSignal: AbortSignal | undefined
+    const client = Client.create({
+      baseUrl: 'https://sdk.example.test',
+      fetch: (input, init) => {
+        receivedSignal = new Request(input, init).signal
+        return Promise.resolve(createInfoResponse())
+      },
+    })
+
+    await client.rpc.meta.info(undefined, { signal: controller.signal })
+
+    expect(receivedSignal?.aborted).toBe(false)
+    controller.abort()
+    expect(receivedSignal?.aborted).toBe(true)
+  })
 })
+
+/** -------------------- 测试工具 -------------------- */
+/** 创建符合 oRPC envelope 的服务信息响应 */
+function createInfoResponse() {
+  return Response.json({
+    json: {
+      name: 'SociLab',
+      version: '0.1.0',
+    },
+  })
+}

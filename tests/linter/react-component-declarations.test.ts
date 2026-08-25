@@ -1,8 +1,8 @@
-import { expect, test } from 'vitest'
+import { expect, it } from 'vitest'
 import { readReactComponentDeclarationDiagnostics } from './react-component-declarations'
 
 /** -------------------- 测试 -------------------- */
-test('React 组件声明检查器识别 PascalCase 箭头组件', () => {
+it('react 组件声明检查器识别 PascalCase 箭头组件', () => {
   expect(readReactComponentDeclarationDiagnostics([
     {
       filePath: 'fixture.tsx',
@@ -24,7 +24,7 @@ test('React 组件声明检查器识别 PascalCase 箭头组件', () => {
   ]).map(item => item.name)).toEqual(['ArrowComponent'])
 })
 
-test('React 组件声明检查器忽略返回普通值的 PascalCase 回调', () => {
+it('react 组件声明检查器忽略返回普通值的 PascalCase 回调', () => {
   expect(readReactComponentDeclarationDiagnostics([
     {
       filePath: 'component-evidence-valid.tsx',
@@ -48,7 +48,7 @@ test('React 组件声明检查器忽略返回普通值的 PascalCase 回调', ()
   ])).toEqual([])
 })
 
-test('React 组件声明检查器捕获 wrapper 与 block 箭头组件', () => {
+it('react 组件声明检查器捕获 wrapper 与 block 箭头组件', () => {
   expect(readReactComponentDeclarationDiagnostics([
     {
       filePath: 'component-wrappers-invalid.tsx',
@@ -73,7 +73,7 @@ test('React 组件声明检查器捕获 wrapper 与 block 箭头组件', () => {
   ])
 })
 
-test('React 组件声明检查器按词法绑定忽略 createElement 遮蔽', () => {
+it('react 组件声明检查器按词法绑定忽略 createElement 遮蔽', () => {
   expect(readReactComponentDeclarationDiagnostics([
     {
       filePath: 'create-element-parameter-shadow-valid.tsx',

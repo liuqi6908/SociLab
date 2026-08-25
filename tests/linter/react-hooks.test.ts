@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { ESLint } from 'eslint'
-import { expect, test } from 'vitest'
+import { expect, it } from 'vitest'
 import { readReactHookOrderDiagnostics, readReactHookSources } from './react-hooks'
 
 /** -------------------- 常量 -------------------- */
@@ -10,7 +10,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 const rulesOfHooksId = 'react-hooks/rules-of-hooks'
 
 /** -------------------- 测试 -------------------- */
-test('Hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆序', () => {
+it('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆序', () => {
   const diagnostics = readReactHookOrderDiagnostics([
     {
       filePath: 'hook-general-invalid.tsx',
@@ -58,7 +58,7 @@ test('Hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆
   ])
 })
 
-test('Hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 Effect 顺序', () => {
+it('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 Effect 顺序', () => {
   expect(readReactHookOrderDiagnostics([
     {
       filePath: 'hook-general-valid.tsx',
@@ -79,7 +79,7 @@ test('Hook 顺序检查器接受 common、state、memo、事件、EffectEvent �
   ])).toEqual([])
 })
 
-test('Hook 顺序检查器按源码位置排列同一声明项并保持最高阶段', () => {
+it('hook 顺序检查器按源码位置排列同一声明项并保持最高阶段', () => {
   const diagnostics = readReactHookOrderDiagnostics([
     {
       filePath: 'hook-order-edge.tsx',
@@ -121,7 +121,7 @@ test('Hook 顺序检查器按源码位置排列同一声明项并保持最高阶
   ])
 })
 
-test('React Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
+it('react Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
   expect(readReactHookSources().map(item => item.filePath)).toEqual([
     'packages/shared-ui/src/index.ts',
     'projects/admin/src/app.tsx',
@@ -143,7 +143,7 @@ test('React Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
   ])
 })
 
-test('React Hook 源码由官方 rules-of-hooks 全仓检查且不存在漏检', async () => {
+it('react Hook 源码由官方 rules-of-hooks 全仓检查且不存在漏检', async () => {
   const eslint = new ESLint({
     allowInlineConfig: false,
     cache: false,

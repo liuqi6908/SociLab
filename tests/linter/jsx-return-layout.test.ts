@@ -5,14 +5,14 @@ import { readJsxReturnLayoutDiagnostics } from './jsx-return-layout'
 describe('jsx return 布局守卫', () => {
   it('报告可收成单行的括号换行 JSX return', () => {
     expect(readJsxReturnLayoutDiagnostics([{
-        filePath: 'fixtures/invalid.tsx',
-        source: [
-          'export function Invalid() {',
-          '  return (',
-          '    <Box data/>',
-          '  )',
-          '}',
-        ].join('\n'),
+      filePath: 'fixtures/invalid.tsx',
+      source: [
+        'export function Invalid() {',
+        '  return (',
+        '    <Box data/>',
+        '  )',
+        '}',
+      ].join('\n'),
     }])).toEqual([
       {
         column: 3,

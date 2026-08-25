@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, it } from 'vitest'
 import {
   formatTransformedPropertyShorthandDiagnostics,
   readTransformedPropertyShorthandDiagnostics,
@@ -7,7 +7,7 @@ import {
 } from './transformed-property-shorthand'
 
 /** -------------------- 测试 -------------------- */
-test('对象字段转换属性简写检查器识别同名来源的内联转换', () => {
+it('对象字段转换属性简写检查器识别同名来源的内联转换', () => {
   const warnings: string[] = []
   const diagnostics = warnTransformedPropertyShorthand([{
     filePath: 'invalid.fixture.ts',
@@ -45,7 +45,7 @@ test('对象字段转换属性简写检查器识别同名来源的内联转换',
   expect(warnings).toEqual([message])
 })
 
-test('对象字段转换属性简写检查器提示同作用域返回字段重命名', () => {
+it('对象字段转换属性简写检查器提示同作用域返回字段重命名', () => {
   const diagnostics = readTransformedPropertyShorthandDiagnostics([{
     filePath: 'alias-return-invalid.fixture.ts',
     source: `
@@ -73,7 +73,7 @@ test('对象字段转换属性简写检查器提示同作用域返回字段重�
   ])
 })
 
-test('对象字段转换属性简写检查器提示小型返回对象混合直接读取与内联派生', () => {
+it('对象字段转换属性简写检查器提示小型返回对象混合直接读取与内联派生', () => {
   const diagnostics = readTransformedPropertyShorthandDiagnostics([{
     filePath: 'mixed-return-invalid.fixture.ts',
     source: `
@@ -113,7 +113,7 @@ test('对象字段转换属性简写检查器提示小型返回对象混合直�
   ])
 })
 
-test('对象字段转换属性简写检查器提示小型调用对象混合属性简写与内联派生', () => {
+it('对象字段转换属性简写检查器提示小型调用对象混合属性简写与内联派生', () => {
   const diagnostics = readTransformedPropertyShorthandDiagnostics([{
     filePath: 'mixed-call-invalid.fixture.ts',
     source: `
@@ -154,7 +154,7 @@ test('对象字段转换属性简写检查器提示小型调用对象混合属�
   ])
 })
 
-test('对象字段转换属性简写检查器接受提前命名并使用属性简写', () => {
+it('对象字段转换属性简写检查器接受提前命名并使用属性简写', () => {
   expect(readTransformedPropertyShorthandDiagnostics([{
     filePath: 'valid.fixture.ts',
     source: `
@@ -236,7 +236,7 @@ test('对象字段转换属性简写检查器接受提前命名并使用属性�
   }])).toEqual([])
 })
 
-test('真实仓库只报告建议而不加入硬失败预算', () => {
+it('真实仓库只报告建议而不加入硬失败预算', () => {
   const sources = readTransformedPropertyShorthandSources()
 
   expect(() => warnTransformedPropertyShorthand(sources)).not.toThrow()

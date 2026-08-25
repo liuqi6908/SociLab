@@ -1,0 +1,25 @@
+# dependencies
+node_modules
+
+# build output
+dist
+coverage
+*.tgz
+
+# caches and temporary files
+.cache
+.eslintcache
+.pnpm-store
+.turbo
+.tmp
+tmp
+*.tsbuildinfo
+
+# environment files
+.env
+.env.*
+!.env.example
+
+# editor and operating system files
+.idea
+.DS_Store

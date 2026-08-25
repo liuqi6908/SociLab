@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "jsx": "react-jsx",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "moduleDetection": "force",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@socilab/api": ["./packages/api/src/index.ts"],
+      "@socilab/request": ["./packages/request/src/index.ts"],
+      "@socilab/sdk": ["./packages/sdk/src/index.ts"],
+      "@socilab/shared": ["./packages/shared/src/index.ts"],
+      "@socilab/shared-ui": ["./packages/shared-ui/src/index.ts"]
+    },
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "packages/**/*.d.ts",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "projects/**/*.d.ts",
+    "projects/**/*.ts",
+    "projects/**/*.tsx",
+    "tests/**/*.d.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ]
+}

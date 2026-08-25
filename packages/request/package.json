@@ -1,0 +1,14 @@
+{
+  "name": "@socilab/request",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run ../../tests/request"
+  },
+  "dependencies": {
+    "@orpc/client": "1.15.0",
+    "@socilab/shared": "workspace:*"
+  }
+}

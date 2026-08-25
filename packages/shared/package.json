@@ -1,0 +1,10 @@
+{
+  "name": "@socilab/shared",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run ../../tests/shared --passWithNoTests"
+  }
+}

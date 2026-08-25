@@ -1,0 +1,15 @@
+{
+  "name": "@socilab/sdk",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run ../../tests/sdk"
+  },
+  "dependencies": {
+    "@orpc/tanstack-query": "1.15.0",
+    "@socilab/api": "workspace:*",
+    "@socilab/request": "workspace:*"
+  }
+}

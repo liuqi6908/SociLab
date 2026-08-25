@@ -1,0 +1,41 @@
+declare function run(): void
+
+class Service {
+  constructor(options: { constructorId: string }) {
+    run()
+    const constructorId = options.constructorId
+  }
+
+  methodValue(input: { methodId: string }) {
+    run()
+    const methodId = input.methodId
+    return methodId
+  }
+
+  get getterValue(input: { getterId: string }) {
+    run()
+    const getterId = input.getterId
+    return getterId
+  }
+
+  set setterValue(input: { setterId: string }) {
+    run()
+    const setterId = input.setterId
+  }
+}
+
+export const expression = function (options: { expressionId: string }) {
+  run()
+  const expressionId = options.expressionId
+  return expressionId
+}
+
+type ContextualHandler = (input: { contextualId: string }) => string
+
+export const contextual: ContextualHandler = (input) => {
+  run()
+  const contextualId = input.contextualId
+  return contextualId
+}
+
+export { Service }

@@ -22,3 +22,30 @@ export function optional(input: { payload: unknown } | undefined) {
   const payload = input.payload
   return payload
 }
+
+type AliasInput = ({ aliasId: string } | undefined)
+
+export function aliasNarrowed(input: AliasInput) {
+  if (!input)
+    return
+  const aliasId = input.aliasId
+  return aliasId
+}
+
+export function genericNarrowed<T extends ({ genericId: string } | undefined)>(
+  input: T,
+) {
+  if (!input)
+    return
+  const genericId = input.genericId
+  return genericId
+}
+
+export function parenthesizedNarrowed(
+  input: (({ parenthesizedId: string } | null)),
+) {
+  if (!input)
+    return
+  const parenthesizedId = input.parenthesizedId
+  return parenthesizedId
+}

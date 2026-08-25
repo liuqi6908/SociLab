@@ -32,4 +32,15 @@ describe('jsx return 布局守卫', () => {
   it('接受单行、超长及 JSX 本身跨行的 return', () => {
     expect(readJsxReturnLayoutDiagnostics([fixture('valid')])).toEqual([])
   })
+
+  it('只报告折叠后恰好 120 字符的多行 return', () => {
+    expect(readJsxReturnLayoutDiagnostics([fixture('boundary')])).toEqual([
+      {
+        column: 3,
+        filePath: 'fixtures/boundary.tsx',
+        line: 2,
+        singleLineLength: 120,
+      },
+    ])
+  })
 })

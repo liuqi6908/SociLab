@@ -4,3 +4,9 @@ declare function current(): void
 
 legacy()
 current()
+
+async function redundantAwait() {
+  return await 1
+}
+
+redundantAwait()

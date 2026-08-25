@@ -18,7 +18,7 @@ function fixture(name: string) {
 
 /** -------------------- 测试 -------------------- */
 describe('废弃 API 守卫', () => {
-  it('报告 TypeScript Language Service 标记的废弃 API 调用', () => {
+  it('只报告 Language Service suggestions 中的废弃 API 调用', () => {
     const diagnostics = readDeprecatedApiDiagnostics([fixture('invalid')])
 
     expect(diagnostics).toHaveLength(1)

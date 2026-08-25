@@ -49,4 +49,19 @@ describe('命名导入与导出布局守卫', () => {
   it('接受 120 字符单行与 121 字符多行声明', () => {
     expect(readNamedImportExportLayoutDiagnostics([fixture('valid')])).toEqual([])
   })
+
+  it('按移除尾逗号后的 120 字符折叠多成员 export', () => {
+    expect(readNamedImportExportLayoutDiagnostics([
+      fixture('trailing-comma-boundary'),
+    ])).toEqual([
+      {
+        column: 1,
+        filePath: 'fixtures/trailing-comma-boundary.ts',
+        kind: 'export',
+        line: 1,
+        memberCount: 4,
+        singleLineLength: 120,
+      },
+    ])
+  })
 })

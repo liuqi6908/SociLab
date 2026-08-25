@@ -1,13 +1,13 @@
 /**
  * 源实现来自内部参考仓库 9da43edf 的 tests/linter/parameter-properties.ts
- * 原实现遍历 TypeScript AST，本项目改用 TypeScript 6 公共 AST 与既有表达式解包工具
+ * 原实现遍历 TypeScript AST，本项目改用 TypeScript 6 公共 Program 与 TypeChecker
  * 本守卫不涉及响应式依赖、回调更新或 SSR/浏览器生命周期，失败统一返回顺序诊断
  */
 import type { TypeScriptSource } from './quality-guard-source'
+import path from 'node:path'
 import * as ts from 'typescript'
 import {
   comparePositionedDiagnostics,
-  parseTypeScriptSources,
   positionOf,
   unwrapExpression,
 } from './quality-guard-source'
@@ -37,13 +37,26 @@ interface ParameterPropertyDeclaration {
   parameter: string
 }
 
+/** 已由 TypeScript Program 解析并绑定 TypeChecker 的源码 */
+interface TypeCheckedSource extends TypeScriptSource {
+  /** 共享类型检查器 */
+  checker: ts.TypeChecker
+  /** Program 中的源码节点 */
+  sourceFile: ts.SourceFile
+}
+
+/** -------------------- 常量 -------------------- */
+/** 仓库根目录 */
+const repositoryRoot = path.resolve(import.meta.dirname, '../..')
+
 /** -------------------- AST 检查函数 -------------------- */
 /**
  * 读取变量声明直接使用的参数属性
  */
 function readParameterPropertyDeclaration(
   declaration: ts.VariableDeclaration,
-  parameterNames: ReadonlySet<string>,
+  parameters: ReadonlyMap<string, ts.ParameterDeclaration>,
+  checker: ts.TypeChecker,
 ): ParameterPropertyDeclaration | undefined {
   if (!declaration.initializer)
     return
@@ -60,8 +73,24 @@ function readParameterPropertyDeclaration(
 
   const source = unwrapExpression(initializer.expression)
 
-  if (!ts.isIdentifier(source) || !parameterNames.has(source.text))
+  if (!ts.isIdentifier(source))
     return
+
+  const parameter = parameters.get(source.text)
+
+  if (!parameter)
+    return
+
+  const declaredType = checker.getTypeAtLocation(parameter.name)
+  const currentType = checker.getTypeAtLocation(source)
+
+  // 已在 guard 后收窄的读取属于窄作用域，不参与函数入口声明顺序
+  if (
+    typeRequiresRuntimeNarrowing(declaredType, checker)
+    && !typeRequiresRuntimeNarrowing(currentType, checker)
+  ) {
+    return
+  }
 
   return {
     binding: declaration.name.text,
@@ -71,51 +100,67 @@ function readParameterPropertyDeclaration(
 }
 
 /**
- * 读取变量语句中的参数属性声明
+ * 判断类型是否仍可能包含需要运行时收窄的值
  */
-function readStatementParameterProperties(
-  statement: ts.Statement,
-  parameterNames: ReadonlySet<string>,
-) {
-  if (!ts.isVariableStatement(statement))
-    return []
+function typeRequiresRuntimeNarrowing(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  visited = new Set<ts.Type>(),
+): boolean {
+  if (visited.has(type))
+    return false
 
-  return statement.declarationList.declarations.flatMap((declaration) => {
-    const property = readParameterPropertyDeclaration(declaration, parameterNames)
+  visited.add(type)
 
-    return property ? [property] : []
-  })
+  const unsafeFlags = ts.TypeFlags.Any
+    | ts.TypeFlags.Null
+    | ts.TypeFlags.Undefined
+    | ts.TypeFlags.Unknown
+    | ts.TypeFlags.Void
+
+  if (type.flags & unsafeFlags)
+    return true
+
+  if (type.isUnion())
+    return type.types.some(item => typeRequiresRuntimeNarrowing(item, checker, visited))
+
+  if (type.isIntersection()) {
+    return type.types.every(item => (
+      typeRequiresRuntimeNarrowing(item, checker, visited)
+    ))
+  }
+
+  if (type.flags & ts.TypeFlags.TypeParameter) {
+    const constraint = checker.getBaseConstraintOfType(type)
+
+    return constraint
+      ? typeRequiresRuntimeNarrowing(constraint, checker, visited)
+      : true
+  }
+
+  return false
 }
 
 /**
- * 判断变量语句是否仍属于连续的入口参数整理区
+ * 判断变量声明是否仍属于连续的入口参数整理区
  */
-function isParameterSetupStatement(
-  statement: ts.Statement,
+function isParameterSetupDeclaration(
+  declaration: ts.VariableDeclaration,
   parameterNames: ReadonlySet<string>,
 ) {
-  if (!ts.isVariableStatement(statement))
+  if (!declaration.initializer)
     return false
 
-  /** 沿直接属性链读取根参数 */
-  const readRoot = (expression: ts.Expression): string | undefined => {
-    let current = unwrapExpression(expression)
+  let current = unwrapExpression(declaration.initializer)
 
-    while (
-      ts.isPropertyAccessExpression(current)
-      || ts.isElementAccessExpression(current)
-    ) {
-      current = unwrapExpression(current.expression)
-    }
-
-    return ts.isIdentifier(current) && parameterNames.has(current.text)
-      ? current.text
-      : undefined
+  while (
+    ts.isPropertyAccessExpression(current)
+    || ts.isElementAccessExpression(current)
+  ) {
+    current = unwrapExpression(current.expression)
   }
 
-  return statement.declarationList.declarations.every(declaration => (
-    declaration.initializer && readRoot(declaration.initializer)
-  ))
+  return ts.isIdentifier(current) && parameterNames.has(current.text)
 }
 
 /**
@@ -132,30 +177,12 @@ function isOrderNeutralStatement(statement: ts.Statement) {
 }
 
 /**
- * 判断参数类型是否要求先经过运行时收窄才能读取属性
- */
-function requiresRuntimeNarrowing(parameter: ts.ParameterDeclaration) {
-  if (parameter.questionToken)
-    return true
-
-  /** 递归识别显式可空和未知类型 */
-  const unsafe = (type: ts.TypeNode): boolean => {
-    if (ts.isUnionTypeNode(type))
-      return type.types.some(unsafe)
-
-    return type.kind === ts.SyntaxKind.AnyKeyword
-      || type.kind === ts.SyntaxKind.NullKeyword
-      || type.kind === ts.SyntaxKind.UndefinedKeyword
-      || type.kind === ts.SyntaxKind.UnknownKeyword
-  }
-
-  return parameter.type ? unsafe(parameter.type) : true
-}
-
-/**
  * 读取函数的稳定诊断名称
  */
 function readFunctionScope(node: ts.FunctionLikeDeclaration) {
+  if (ts.isConstructorDeclaration(node))
+    return 'constructor'
+
   if ('name' in node && node.name)
     return node.name.getText()
 
@@ -167,6 +194,96 @@ function readFunctionScope(node: ts.FunctionLikeDeclaration) {
   }
 
   return '<anonymous>'
+}
+
+/**
+ * 使用 TypeScript 6 公共 Program 为受控源码建立语义模型
+ */
+function parseTypeCheckedSources(
+  sources: readonly TypeScriptSource[],
+  root = repositoryRoot,
+): TypeCheckedSource[] {
+  const sourceByFileName = new Map(sources.map(item => [
+    path.resolve(root, item.filePath),
+    item,
+  ]))
+  const fileNames = [...sourceByFileName.keys()]
+  const configPath = ts.findConfigFile(root, ts.sys.fileExists)
+  const readConfig = configPath
+    ? ts.readConfigFile(configPath, ts.sys.readFile)
+    : undefined
+
+  if (readConfig?.error) {
+    throw new Error(ts.flattenDiagnosticMessageText(
+      readConfig.error.messageText,
+      '\n',
+    ))
+  }
+
+  const compilerOptions = configPath
+    ? ts.parseJsonConfigFileContent(
+      readConfig?.config ?? {},
+      ts.sys,
+      path.dirname(configPath),
+      undefined,
+      configPath,
+    ).options
+    : {
+        jsx: ts.JsxEmit.ReactJSX,
+        module: ts.ModuleKind.ESNext,
+        strict: true,
+        target: ts.ScriptTarget.ESNext,
+      }
+  const host = ts.createCompilerHost(compilerOptions, true)
+  const readSourceFile = host.getSourceFile.bind(host)
+
+  host.fileExists = fileName => (
+    sourceByFileName.has(path.resolve(fileName)) || ts.sys.fileExists(fileName)
+  )
+  host.readFile = fileName => (
+    sourceByFileName.get(path.resolve(fileName))?.source ?? ts.sys.readFile(fileName)
+  )
+  host.getSourceFile = (
+    fileName,
+    languageVersionOrOptions,
+    onError,
+    shouldCreateNewSourceFile,
+  ) => {
+    const source = sourceByFileName.get(path.resolve(fileName))?.source
+
+    if (source === undefined) {
+      return readSourceFile(
+        fileName,
+        languageVersionOrOptions,
+        onError,
+        shouldCreateNewSourceFile,
+      )
+    }
+
+    return ts.createSourceFile(
+      fileName,
+      source,
+      languageVersionOrOptions,
+      true,
+      fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    )
+  }
+
+  const program = ts.createProgram({
+    host,
+    options: compilerOptions,
+    rootNames: fileNames,
+  })
+  const checker = program.getTypeChecker()
+
+  return sources.map((item) => {
+    const sourceFile = program.getSourceFile(path.resolve(root, item.filePath))
+
+    if (!sourceFile)
+      throw new Error(`TypeScript 无法解析源码：${item.filePath}`)
+
+    return { ...item, checker, sourceFile }
+  })
 }
 
 /**
@@ -193,17 +310,18 @@ export function readParameterPropertyOrderDiagnostics(
 ) {
   const diagnostics: ParameterPropertyOrderDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { checker, filePath, sourceFile } of parseTypeCheckedSources(sources)) {
     /** 检查单个函数体的首部参数属性声明区 */
     const inspect = (node: ts.FunctionLikeDeclaration) => {
       if (!node.body || !ts.isBlock(node.body))
         return
 
-      const parameterNames = new Set(node.parameters.flatMap(parameter => (
-        ts.isIdentifier(parameter.name) && !requiresRuntimeNarrowing(parameter)
-          ? [parameter.name.text]
+      const parameters = new Map(node.parameters.flatMap(parameter => (
+        ts.isIdentifier(parameter.name)
+          ? [[parameter.name.text, parameter] as const]
           : []
       )))
+      const parameterNames = new Set(parameters.keys())
 
       if (parameterNames.size === 0)
         return
@@ -211,28 +329,33 @@ export function readParameterPropertyOrderDiagnostics(
       let leadingDeclarations = true
 
       for (const statement of node.body.statements) {
-        const properties = readStatementParameterProperties(
-          statement,
-          parameterNames,
-        )
+        if (ts.isVariableStatement(statement)) {
+          for (const declaration of statement.declarationList.declarations) {
+            const property = readParameterPropertyDeclaration(
+              declaration,
+              parameters,
+              checker,
+            )
 
-        if (properties.length > 0) {
-          if (!leadingDeclarations) {
-            for (const property of properties) {
-              diagnostics.push({
-                ...positionOf(sourceFile, property.node),
-                filePath,
-                message: `${property.binding} 来自参数 ${property.parameter}，必须在函数体开头声明`,
-                scope: readFunctionScope(node),
-              })
+            if (property) {
+              if (!leadingDeclarations) {
+                diagnostics.push({
+                  ...positionOf(sourceFile, property.node),
+                  filePath,
+                  message: `${property.binding} 来自参数 ${property.parameter}，必须在函数体开头声明`,
+                  scope: readFunctionScope(node),
+                })
+              }
+
+              continue
             }
+
+            if (!isParameterSetupDeclaration(declaration, parameterNames))
+              leadingDeclarations = false
           }
 
           continue
         }
-
-        if (isParameterSetupStatement(statement, parameterNames))
-          continue
 
         if (!isOrderNeutralStatement(statement))
           leadingDeclarations = false

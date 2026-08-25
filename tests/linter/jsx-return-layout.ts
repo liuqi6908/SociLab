@@ -3,9 +3,9 @@
  * 原实现遍历 TypeScript AST，本项目改用 TypeScript 6 公共 AST 与既有解析边界
  * 本守卫不涉及响应式依赖、回调更新或 SSR/浏览器生命周期，失败统一返回布局诊断
  */
-import type { TypeScriptSource } from './quality-guard-source'
+import type { TypeScriptSource } from './source'
 import * as ts from 'typescript'
-import { parseTypeScriptSources, positionOf } from './quality-guard-source'
+import { parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** JSX return 布局诊断 */

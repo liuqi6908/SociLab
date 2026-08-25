@@ -1,25 +1,20 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { readDeprecatedApiDiagnostics } from './deprecated-api'
-
-/** -------------------- 测试夹具 -------------------- */
-const fixtureRoot = path.resolve(import.meta.dirname, 'fixtures/deprecated-api')
-
-/**
- * 读取废弃 API 守卫夹具
- */
-function fixture(name: string) {
-  return {
-    filePath: `fixtures/${name}.ts`,
-    source: readFileSync(path.join(fixtureRoot, `${name}.fixture`), 'utf8'),
-  }
-}
 
 /** -------------------- 测试 -------------------- */
 describe('废弃 API 守卫', () => {
   it('只报告 Language Service suggestions 中的废弃 API 调用', () => {
-    const diagnostics = readDeprecatedApiDiagnostics([fixture('invalid')])
+    const diagnostics = readDeprecatedApiDiagnostics([{
+      filePath: 'fixtures/invalid.ts',
+      source: [
+        '/** @deprecated 请改用 current */',
+        'declare function legacy(): void',
+        'declare function current(): void',
+        '',
+        'legacy()',
+        'current()',
+      ].join('\n'),
+    }])
 
     expect(diagnostics).toHaveLength(1)
     expect(diagnostics[0]).toMatchObject({
@@ -32,6 +27,15 @@ describe('废弃 API 守卫', () => {
   })
 
   it('接受未调用废弃声明的源码', () => {
-    expect(readDeprecatedApiDiagnostics([fixture('valid')])).toEqual([])
+    expect(readDeprecatedApiDiagnostics([{
+      filePath: 'fixtures/valid.ts',
+      source: [
+        '/** @deprecated 请改用 current */',
+        'declare function legacy(): void',
+        'declare function current(): void',
+        '',
+        'current()',
+      ].join('\n'),
+    }])).toEqual([])
   })
 })

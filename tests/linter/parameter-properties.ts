@@ -3,14 +3,14 @@
  * 原实现遍历 TypeScript AST，本项目改用 TypeScript 6 公共 Program 与 TypeChecker
  * 本守卫不涉及响应式依赖、回调更新或 SSR/浏览器生命周期，失败统一返回顺序诊断
  */
-import type { TypeScriptSource } from './quality-guard-source'
+import type { TypeScriptSource } from './source'
 import path from 'node:path'
 import * as ts from 'typescript'
 import {
   comparePositionedDiagnostics,
   positionOf,
-  unwrapExpression,
-} from './quality-guard-source'
+} from './source'
+import { unwrapExpression } from './ast'
 
 /** -------------------- 类型 -------------------- */
 /** 参数属性声明顺序诊断 */

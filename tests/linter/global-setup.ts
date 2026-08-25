@@ -111,7 +111,7 @@ function isProductionSource(source: TypeScriptSource) {
   && !source.filePath.endsWith('.d.ts')
 }
 
-/** 断言仓库中不存在 qygent 领域与品牌残留 */
+/** 断言仓库中不存在旧领域与品牌残留 */
 function assertNoRepositoryResiduals(root: string) {
   const diagnostics = scanRepositoryResiduals(root)
 

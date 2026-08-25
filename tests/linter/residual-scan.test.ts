@@ -8,7 +8,7 @@ import {
   scanRepositoryResiduals,
 } from './residual-scan'
 
-// cspell:ignore qygent Qiyan
+// cspell:ignore electronish qygent Qiyan
 
 /** -------------------- 测试工具 -------------------- */
 const legacyProductAgent = ['Qiyan', 'Agent'].join('')

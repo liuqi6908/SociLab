@@ -12,6 +12,7 @@ export default defineConfig({
       '@socilab/request': source('./packages/request/src/index.ts'),
       '@socilab/sdk/query': source('./packages/sdk/src/query/index.ts'),
       '@socilab/sdk': source('./packages/sdk/src/index.ts'),
+      '@socilab/shared/node': source('./packages/shared/src/node/index.ts'),
       '@socilab/shared': source('./packages/shared/src/index.ts'),
       '@socilab/shared-ui/utils': source('./packages/shared-ui/src/utils/index.ts'),
     },

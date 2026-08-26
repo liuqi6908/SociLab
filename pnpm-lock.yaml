@@ -199,6 +199,10 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@socilab/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
   projects/client:
     dependencies:
@@ -220,6 +224,10 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@socilab/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
   projects/server:
     dependencies:

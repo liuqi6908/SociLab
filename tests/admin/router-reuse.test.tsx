@@ -3,6 +3,7 @@
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../projects/admin/src/app'
+import { createAppRouter } from '../../projects/admin/src/router'
 
 /** 捕获 App 交给真实 TanStack Router Provider 的 Router 实例 */
 const routers = vi.hoisted(() => [] as object[])
@@ -28,6 +29,10 @@ afterEach(() => {
 })
 
 describe('admin router lifecycle', () => {
+  it('使用部署基础路径创建 Router', () => {
+    expect(createAppRouter('/management/').basepath).toBe('/management/')
+  })
+
   it('app 重渲染时复用同一个 Router 实例', () => {
     const view = render(<App />)
 

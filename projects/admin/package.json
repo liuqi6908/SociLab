@@ -1,0 +1,23 @@
+{
+  "name": "@socilab/admin",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest --root ../.. run tests/admin",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@socilab/sdk": "workspace:*",
+    "@socilab/shared-ui": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-router": "^1.139.16",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@socilab/shared": "workspace:*"
+  }
+}

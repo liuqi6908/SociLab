@@ -1,0 +1,21 @@
+{
+  "name": "@socilab/shared-ui",
+  "type": "module",
+  "private": true,
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    "./styles.css": "./src/styles/index.css",
+    "./utils": "./src/utils/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest --root ../.. run tests/shared-ui",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0"
+  }
+}

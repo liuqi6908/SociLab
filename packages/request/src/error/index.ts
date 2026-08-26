@@ -1,0 +1,48 @@
+import type { UnknownRecord } from '@socilab/shared'
+
+/** -------------------- 类型 -------------------- */
+/** 输入校验问题 */
+export interface HttpErrorIssue {
+  /** 校验器错误码 */
+  code: string
+  /** 可读错误信息 */
+  message: string
+  /** 输入字段路径 */
+  path: string
+}
+
+/** HttpError 的初始化数据 */
+export interface HttpErrorInput {
+  /** HTTP 状态码 */
+  status: number
+  /** 可读错误信息 */
+  message: string
+  /** 稳定业务错误码 */
+  code?: string
+  /** 结构化错误上下文 */
+  details?: UnknownRecord
+  /** 输入校验问题 */
+  issues?: HttpErrorIssue[]
+}
+
+/** -------------------- 核心类 -------------------- */
+/** 非成功 HTTP 响应的统一错误 */
+export class HttpError extends Error {
+  /** HTTP 状态码 */
+  public readonly status: number
+  /** 稳定业务错误码 */
+  public readonly code?: string
+  /** 结构化错误上下文 */
+  public readonly details?: UnknownRecord
+  /** 输入校验问题 */
+  public readonly issues?: HttpErrorIssue[]
+
+  public constructor(input: HttpErrorInput) {
+    super(input.message)
+    this.name = 'HttpError'
+    this.status = input.status
+    this.code = input.code
+    this.details = input.details
+    this.issues = input.issues
+  }
+}

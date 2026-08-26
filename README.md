@@ -54,22 +54,41 @@ SociLab/
 ```bash
 pnpm install
 cp projects/server/.env.example projects/server/.env
+cp projects/client/.env.example projects/client/.env.local
+cp projects/admin/.env.example projects/admin/.env.local
 ```
 
-服务端环境变量如下。程序回退值指环境变量完全未配置时的行为；复制
-`projects/server/.env.example` 后，会加载该文件的启动命令使用示例配置值：
+Client 和 Admin 的 Vite 开发、构建与预览配置如下。基础路径会同时传给 Vite 和
+TanStack Router；终端环境变量优先于对应 workspace 的环境文件：
+
+| 应用 | 变量 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| Client | `CLIENT_HOST` | `0.0.0.0` | 开发与预览监听主机 |
+| Client | `CLIENT_PORT` | `4318` | 开发与预览监听端口 |
+| Client | `CLIENT_BASE_PATH` | `/` | 部署基础路径，例如 `/learning/` |
+| Client | `CLIENT_API_PROXY_TARGET` | `http://127.0.0.1:4317` | `/api` 开发代理目标 |
+| Admin | `ADMIN_HOST` | `0.0.0.0` | 开发与预览监听主机 |
+| Admin | `ADMIN_PORT` | `4319` | 开发与预览监听端口 |
+| Admin | `ADMIN_BASE_PATH` | `/` | 部署基础路径，例如 `/management/` |
+| Admin | `ADMIN_API_PROXY_TARGET` | `http://127.0.0.1:4317` | `/api` 开发代理目标 |
+
+两端仍可通过 `VITE_API_BASE_URL` 设置浏览器运行时 API 地址；留空时使用当前页面
+Origin。Host、port、base path 和代理目标不是浏览器配置，因此不使用 `VITE_*` 前缀。
+
+服务端网络变量如下。变量未配置时使用默认值；配置非法端口时启动会直接失败：
 
 | 变量 | 程序回退值 | `.env.example` 值 | 说明 |
 | --- | --- | --- | --- |
 | `SERVER_HOST` | `127.0.0.1` | `127.0.0.1` | HTTP 监听地址 |
-| `SERVER_PORT` | `4317` | `4317` | HTTP 监听端口，无效值会回退到 `4317` |
-| `CORS_ORIGINS` | 空 | `http://localhost:3000` | 允许访问 API 的 Origin，多个值使用逗号分隔 |
+| `SERVER_PORT` | `4317` | `4317` | HTTP 监听端口 |
+| `CORS_ORIGINS` | 空 | Client 与 Admin 默认 Origin | 允许访问 API 的 Origin，多个值使用逗号分隔 |
 
 `pnpm dev` 和 `pnpm dev:server` 直接读取当前终端已经设置的环境变量，不会自动加载
 `projects/server/.env`；`pnpm start` 在完成构建后从 `projects/server/.env` 读取配置。
 
-客户端和管理端可分别在 `projects/client/.env.local` 与 `projects/admin/.env.local`
-设置 `VITE_API_BASE_URL`。本地环境文件已被 Git 忽略，不要提交真实密钥或个人配置。
+PostgreSQL、Redis、OSS、短信、邮件和 Cap 只建立了可选配置契约，尚未安装 SDK 或创建连接。
+任一服务组完全留空时不会启用；填写任一字段后必须满足整组校验。完整变量、后续技术方案和
+安全边界见[基础设施服务](./docs/基础设施服务.md)。本地环境文件已被 Git 忽略，不要提交真实密钥或个人配置。
 
 ## 开发、构建与验证
 
@@ -111,8 +130,9 @@ pnpm spellcheck
 契约由 `@socilab/api` 定义，服务端实现后同时挂载到 oRPC 与 OpenAPI，客户端和管理端通过
 `@socilab/sdk` 的类型化能力调用。它只用于证明契约、请求、服务和界面链路已经接通，不承载业务语义。
 
-## 业务文档
+## 项目文档
 
+- [基础设施服务](./docs/基础设施服务.md)
 - [业务流程](./docs/业务流程.md)
 - [页面概况](./docs/页面概况.md)
 - 页面设计图位于 [`docs/assets`](./docs/assets/)

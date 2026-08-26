@@ -17,10 +17,11 @@ export interface ServerHandle {
 /** 按环境配置启动 HTTP 服务 */
 export function startServer(): ServerHandle {
   const config = loadServerConfig()
+  const { corsOrigins, host, port } = config.server
   const server = serve({
-    fetch: createApp({ corsOrigins: config.corsOrigins }).fetch,
-    hostname: config.host,
-    port: config.port,
+    fetch: createApp({ corsOrigins }).fetch,
+    hostname: host,
+    port,
   })
 
   return {

@@ -1,36 +1,50 @@
+import type { CaptchaConfig } from './captcha.js'
+import type { DatabaseConfig } from './database.js'
+import type { EmailConfig } from './email.js'
+import type { OssConfig } from './oss.js'
+import type { RedisConfig } from './redis.js'
+import type { HttpServerConfig } from './server.js'
+import type { SmsConfig } from './sms.js'
 import process from 'node:process'
+import { loadCaptchaConfig } from './captcha.js'
+import { loadDatabaseConfig } from './database.js'
+import { loadEmailConfig } from './email.js'
+import { loadOssConfig } from './oss.js'
+import { loadRedisConfig } from './redis.js'
+import { loadHttpServerConfig } from './server.js'
+import { loadSmsConfig } from './sms.js'
 
 /** -------------------- 类型 -------------------- */
-/** 服务网络配置 */
+/** 服务端完整环境配置 */
 export interface ServerConfig {
-  /** 监听主机 */
-  host: string
-  /** 监听端口 */
-  port: number
-  /** 允许跨域访问 API 的 Origin */
-  corsOrigins: string[]
+  /** HTTP 服务网络配置 */
+  server: HttpServerConfig
+  /** PostgreSQL 连接配置 */
+  database?: DatabaseConfig
+  /** Redis 连接配置 */
+  redis?: RedisConfig
+  /** 阿里云 OSS 连接配置 */
+  oss?: OssConfig
+  /** 阿里云短信连接配置 */
+  sms?: SmsConfig
+  /** SMTP 邮件连接配置 */
+  email?: EmailConfig
+  /** 自托管 Cap 验证码配置 */
+  captcha?: CaptchaConfig
 }
 
 /** -------------------- 核心函数 -------------------- */
-/** 从进程环境读取服务网络配置 */
+/**
+ * 从进程环境读取完整服务配置
+ */
 export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
-    corsOrigins: (environment.CORS_ORIGINS ?? '')
-      .split(',')
-      .map(value => value.trim())
-      .filter(Boolean),
-    host: environment.SERVER_HOST?.trim() || '127.0.0.1',
-    port: parsePort(environment.SERVER_PORT),
+    captcha: loadCaptchaConfig(environment),
+    database: loadDatabaseConfig(environment),
+    email: loadEmailConfig(environment),
+    oss: loadOssConfig(environment),
+    redis: loadRedisConfig(environment),
+    server: loadHttpServerConfig(environment),
+    sms: loadSmsConfig(environment),
   }
-}
-
-/** -------------------- 内部函数 -------------------- */
-/** 解析服务端口并在无效配置时保留安全默认值 */
-function parsePort(value: string | undefined) {
-  if (!value)
-    return 4317
-
-  const port = Number(value)
-
-  return Number.isInteger(port) && port > 0 && port < 65_536 ? port : 4317
 }

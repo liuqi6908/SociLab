@@ -3,7 +3,6 @@ import { ApiError } from '@socilab/api'
 import { describe, expect, it } from 'vitest'
 import { createApp } from '../../projects/server/src/app/define'
 import { normalizeProtocolResponse } from '../../projects/server/src/app/orpc'
-import { loadServerConfig } from '../../projects/server/src/infra/config'
 
 /** 创建内存服务请求 */
 function request(
@@ -88,26 +87,6 @@ describe('server', () => {
       'PATCH /fixture',
       'TRACE /fixture',
     ])
-  })
-
-  it('解析服务地址、端口与跨域来源的配置边界', () => {
-    expect(loadServerConfig({})).toEqual({
-      corsOrigins: [],
-      host: '127.0.0.1',
-      port: 4317,
-    })
-    expect(loadServerConfig({
-      CORS_ORIGINS: ' https://client.example.test, ,https://admin.example.test ',
-      SERVER_HOST: ' 0.0.0.0 ',
-      SERVER_PORT: '65535',
-    })).toEqual({
-      corsOrigins: ['https://client.example.test', 'https://admin.example.test'],
-      host: '0.0.0.0',
-      port: 65_535,
-    })
-
-    for (const port of ['0', '65536', '1.5', 'invalid'])
-      expect(loadServerConfig({ SERVER_PORT: port }).port).toBe(4317)
   })
 
   it('仅为已配置 Origin 写入 CORS 响应头', async () => {

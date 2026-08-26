@@ -49,7 +49,7 @@ it('全仓 setup 同时报告质量与残留 gate 的真实诊断', async () => 
   try {
     writeRepositoryFiles(root, {
       'packages/example/src/index.ts': 'export default true\n',
-      'projects/client/src/styles.css': '.Runtime { display: block; }\n',
+      'projects/client/src/styles/index.css': '.Runtime { display: block; }\n',
     })
 
     const running = runRepositoryGuards(root)

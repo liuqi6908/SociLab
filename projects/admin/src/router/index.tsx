@@ -1,5 +1,5 @@
 import { createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+import { routeTree } from '../routeTree.gen'
 
 /** -------------------- 核心函数 -------------------- */
 /** 为当前应用实例创建文件路由器 */

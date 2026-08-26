@@ -3,9 +3,10 @@ import { implement } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/fetch'
 import { API_RPC_PATH, apiContract } from '@socilab/api'
 import { Client } from '@socilab/sdk'
+import { createApiQueryUtils } from '@socilab/sdk/query'
 import { Hono } from 'hono'
 import { describe, expect, it } from 'vitest'
-import { createApp } from '../../projects/server/src/app'
+import { createApp } from '../../projects/server/src/app/define'
 
 describe('sdk client', () => {
   it('calls the typed service-info contract through an in-memory Hono oRPC boundary', async () => {
@@ -39,7 +40,7 @@ describe('sdk client', () => {
     })
 
     await expect(client.rpc.meta.info()).resolves.toEqual({ name: 'SociLab', version: '0.1.0' })
-    expect(client.createApiQueryUtils().meta.info.queryKey()).toEqual([
+    expect(createApiQueryUtils(client).meta.info.queryKey()).toEqual([
       ['https://sdk.example.test', 'meta', 'info'],
       { type: 'query' },
     ])
@@ -79,8 +80,8 @@ describe('sdk client', () => {
   })
 
   it('isolates query keys by base URL and keeps query utility keys consistent', () => {
-    const first = Client.create({ baseUrl: 'https://first.example.test/' }).createApiQueryUtils()
-    const second = Client.create({ baseUrl: 'https://second.example.test/' }).createApiQueryUtils()
+    const first = createApiQueryUtils(Client.create({ baseUrl: 'https://first.example.test/' }))
+    const second = createApiQueryUtils(Client.create({ baseUrl: 'https://second.example.test/' }))
     const firstKey = first.meta.info.queryKey()
     const secondKey = second.meta.info.queryKey()
 

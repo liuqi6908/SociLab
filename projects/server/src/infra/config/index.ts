@@ -1,5 +1,6 @@
 import process from 'node:process'
 
+/** -------------------- 类型 -------------------- */
 /** 服务网络配置 */
 export interface ServerConfig {
   /** 监听主机 */
@@ -10,6 +11,7 @@ export interface ServerConfig {
   corsOrigins: string[]
 }
 
+/** -------------------- 核心函数 -------------------- */
 /** 从进程环境读取服务网络配置 */
 export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
@@ -22,6 +24,7 @@ export function loadServerConfig(environment: NodeJS.ProcessEnv = process.env): 
   }
 }
 
+/** -------------------- 内部函数 -------------------- */
 /** 解析服务端口并在无效配置时保留安全默认值 */
 function parsePort(value: string | undefined) {
   if (!value)

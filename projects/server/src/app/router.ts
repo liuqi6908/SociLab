@@ -1,11 +1,11 @@
-import type { MetaModule } from '../modules/index.js'
+import type { MetaHandlers } from '../modules/meta/handlers.js'
 import { implement, ORPCError, os, ValidationError } from '@orpc/server'
 import { apiContract, ApiError } from '@socilab/api'
 
 /** 创建 API router 的依赖 */
 export interface CreateApiRouterOptions {
   /** 服务元信息模块 */
-  meta: MetaModule
+  meta: MetaHandlers
 }
 
 /** 统一 API 错误边界 */
@@ -59,7 +59,7 @@ export function createApiRouter(options: CreateApiRouterOptions) {
 
   return api.router({
     meta: {
-      info: api.meta.info.handler(() => options.meta.getInfo()),
+      info: api.meta.info.handler(() => options.meta.info()),
     },
   })
 }

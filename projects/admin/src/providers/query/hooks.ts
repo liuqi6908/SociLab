@@ -2,9 +2,7 @@ import { use } from 'react'
 import { ClientContext } from './context'
 
 /** -------------------- Hooks -------------------- */
-/**
- * 读取根 Provider 初始化的类型化查询能力
- */
+/** 读取根 Provider 初始化的类型化查询能力 */
 export function useApi() {
   const value = use(ClientContext)
 

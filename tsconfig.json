@@ -10,8 +10,9 @@
       "@socilab/api": ["./packages/api/src/index.ts"],
       "@socilab/request": ["./packages/request/src/index.ts"],
       "@socilab/sdk": ["./packages/sdk/src/index.ts"],
+      "@socilab/sdk/query": ["./packages/sdk/src/query/index.ts"],
       "@socilab/shared": ["./packages/shared/src/index.ts"],
-      "@socilab/shared-ui": ["./packages/shared-ui/src/index.ts"]
+      "@socilab/shared-ui/utils": ["./packages/shared-ui/src/utils/index.ts"]
     },
     "resolveJsonModule": true,
     "types": ["node"],

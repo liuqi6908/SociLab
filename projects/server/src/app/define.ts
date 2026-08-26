@@ -1,19 +1,21 @@
-import type { MetaModuleOptions } from '../modules/index.js'
+import type { MetaHandlersOptions } from '../modules/meta/handlers.js'
 import { API_BASE_PATH } from '@socilab/api'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { createMetaModule } from '../modules/index.js'
+import { createMetaHandlers } from '../modules/meta/handlers.js'
 import { registerApiProtocols } from './orpc.js'
 import { createApiRouter } from './router.js'
 
+/** -------------------- 类型 -------------------- */
 /** 创建内存 Hono 服务的选项 */
 export interface CreateAppOptions {
   /** 允许浏览器访问 API 的 Origin */
   corsOrigins?: string[]
-  /** 元信息模块的可替换实现 */
-  meta?: MetaModuleOptions
+  /** 元信息 handler 的可替换实现 */
+  meta?: MetaHandlersOptions
 }
 
+/** -------------------- 核心函数 -------------------- */
 /** 创建只暴露共享技术 API 的 Hono 服务 */
 export function createApp(options: CreateAppOptions = {}) {
   const app = new Hono()
@@ -27,7 +29,7 @@ export function createApp(options: CreateAppOptions = {}) {
   }
 
   const router = createApiRouter({
-    meta: createMetaModule(options.meta),
+    meta: createMetaHandlers(options.meta),
   })
 
   registerApiProtocols(app, router)

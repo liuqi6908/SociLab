@@ -38,8 +38,9 @@ describe('workspace package exports', () => {
         'import { metaInfoSchema } from \'@socilab/api\'',
         'import { createRequest } from \'@socilab/request\'',
         'import { Client } from \'@socilab/sdk\'',
+        'import { createApiQueryUtils } from \'@socilab/sdk/query\'',
         'const client = Client.create({ baseUrl: \'https://exports.example.test/\' })',
-        'console.log(JSON.stringify({ plain: isPlainRecord({}), info: metaInfoSchema.parse({ name: \'SociLab\', version: \'0.1.0\' }), request: typeof createRequest, baseUrl: client.baseUrl }))',
+        'console.log(JSON.stringify({ plain: isPlainRecord({}), info: metaInfoSchema.parse({ name: \'SociLab\', version: \'0.1.0\' }), request: typeof createRequest, query: typeof createApiQueryUtils, baseUrl: client.baseUrl }))',
       ].join(';'),
     ], {
       cwd: fileURLToPath(new URL('../../packages/sdk', import.meta.url)),
@@ -50,6 +51,7 @@ describe('workspace package exports', () => {
       plain: true,
       info: { name: 'SociLab', version: '0.1.0' },
       request: 'function',
+      query: 'function',
       baseUrl: 'https://exports.example.test',
     })
   })

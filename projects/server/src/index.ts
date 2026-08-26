@@ -1,47 +1,5 @@
-import type { ServerType } from '@hono/node-server'
-import process from 'node:process'
-import { serve } from '@hono/node-server'
-import { createApp } from './app/index.js'
-import { loadServerConfig } from './infra/index.js'
-
-/** 已启动服务的关闭句柄 */
-export interface ServerHandle {
-  /** HTTP 服务实例 */
-  server: ServerType
-  /** 停止监听并等待所有连接关闭 */
-  close: () => Promise<void>
-}
-
-/** 按环境配置启动 HTTP 服务 */
-export function startServer(): ServerHandle {
-  const config = loadServerConfig()
-  const server = serve({
-    fetch: createApp({ corsOrigins: config.corsOrigins }).fetch,
-    hostname: config.host,
-    port: config.port,
-  })
-
-  return {
-    close: () => new Promise((resolve, reject) => {
-      server.close(error => error ? reject(error) : resolve())
-    }),
-    server,
-  }
-}
-
-/** 仅在可执行入口中监听，导入模块不会产生副作用 */
-if (isMainModule()) {
-  const handle = startServer()
-  const close = async () => {
-    await handle.close()
-    process.exit()
-  }
-
-  process.once('SIGINT', close)
-  process.once('SIGTERM', close)
-}
-
-/** 判断当前模块是否是 Node.js 的可执行入口 */
-function isMainModule() {
-  return process.argv[1] !== undefined && import.meta.filename === process.argv[1]
-}
+/** -------------------- 模块出口 -------------------- */
+export { createApp } from './app/define.js'
+export type { CreateAppOptions } from './app/define.js'
+export { startServer } from './app/server.js'
+export type { ServerHandle } from './app/server.js'

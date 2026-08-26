@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { cn } from '@socilab/shared-ui'
+import { cn } from '@socilab/shared-ui/utils'
 import { describe, expect, it } from 'vitest'
 
 /** shared-ui 公开包配置 */
@@ -18,9 +18,12 @@ describe('shared ui', () => {
       .toBe('py-1 px-4 block')
   })
 
-  it('通过根入口和样式子路径公开能力并保留 CSS 副作用', () => {
+  it('通过工具和样式子路径公开能力并保留 CSS 副作用', () => {
     expect(typeof cn).toBe('function')
-    expect(Object.keys(packageJson.exports).sort()).toEqual(['.', './styles.css'])
+    expect(packageJson.exports).toEqual({
+      './styles.css': './src/styles/index.css',
+      './utils': './src/utils/index.ts',
+    })
     expect(packageJson.sideEffects).toContain('**/*.css')
   })
 

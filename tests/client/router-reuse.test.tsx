@@ -29,9 +29,9 @@ afterEach(() => {
 
 describe('client router lifecycle', () => {
   it('app 重渲染时复用同一个 Router 实例', () => {
-    const view = render(<App baseUrl="https://client.example.test" />)
+    const view = render(<App />)
 
-    view.rerender(<App baseUrl="https://client.example.test" />)
+    view.rerender(<App />)
 
     expect(routers).toHaveLength(2)
     expect(routers[1]).toBe(routers[0])

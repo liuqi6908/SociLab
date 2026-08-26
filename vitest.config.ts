@@ -10,9 +10,10 @@ export default defineConfig({
     alias: {
       '@socilab/api': source('./packages/api/src/index.ts'),
       '@socilab/request': source('./packages/request/src/index.ts'),
+      '@socilab/sdk/query': source('./packages/sdk/src/query/index.ts'),
       '@socilab/sdk': source('./packages/sdk/src/index.ts'),
       '@socilab/shared': source('./packages/shared/src/index.ts'),
-      '@socilab/shared-ui': source('./packages/shared-ui/src/index.ts'),
+      '@socilab/shared-ui/utils': source('./packages/shared-ui/src/utils/index.ts'),
     },
   },
   test: {

@@ -1,9 +1,9 @@
 import { ORPCError } from '@orpc/server'
 import { ApiError } from '@socilab/api'
 import { describe, expect, it } from 'vitest'
-import { createApp } from '../../projects/server/src/app'
+import { createApp } from '../../projects/server/src/app/define'
 import { normalizeProtocolResponse } from '../../projects/server/src/app/orpc'
-import { loadServerConfig } from '../../projects/server/src/infra/env'
+import { loadServerConfig } from '../../projects/server/src/infra/config'
 
 /** 创建内存服务请求 */
 function request(

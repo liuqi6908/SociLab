@@ -6,13 +6,9 @@
     "**/*.css"
   ],
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles/index.css",
+    "./utils": "./src/utils/index.ts"
   },
-  "types": "./src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest --root ../.. run tests/shared-ui",

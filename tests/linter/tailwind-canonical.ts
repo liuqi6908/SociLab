@@ -66,7 +66,7 @@ const tailwindSourceRoots = [
 /** 唯一项目主题入口与 Tailwind 默认主题 */
 const tailwindThemePaths = [
   'node_modules/tailwindcss/theme.css',
-  'packages/shared-ui/src/styles.css',
+  'packages/shared-ui/src/styles/index.css',
 ] as const
 /** Tailwind IntelliSense 默认浏览器根字号 */
 const tailwindRootFontSize = 16

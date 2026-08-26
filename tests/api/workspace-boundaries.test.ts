@@ -128,16 +128,13 @@ describe('workspace package boundaries', () => {
     }
   })
 
-  it('shared-ui declares its public root and style exports', () => {
+  it('shared-ui declares its public utility and style exports', () => {
     const sharedUi = readWorkspaces(rootDir)
       .find(workspace => workspace.manifest.name === '@socilab/shared-ui')
 
     expect(sharedUi?.manifest.exports).toMatchObject({
-      '.': {
-        default: './src/index.ts',
-        types: './src/index.ts',
-      },
-      './styles.css': './src/styles.css',
+      './styles.css': './src/styles/index.css',
+      './utils': './src/utils/index.ts',
     })
   })
 })

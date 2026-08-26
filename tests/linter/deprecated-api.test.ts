@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readDeprecatedApiDiagnostics } from './deprecated-api'
 
 /** -------------------- 测试 -------------------- */
 describe('废弃 API 守卫', () => {
-  it('只报告 Language Service suggestions 中的废弃 API 调用', async () => {
+  test('只报告 Language Service suggestions 中的废弃 API 调用', async () => {
     const diagnostics = await readDeprecatedApiDiagnostics([{
       filePath: 'fixtures/invalid.ts',
       source: [
@@ -26,7 +26,7 @@ describe('废弃 API 守卫', () => {
     expect(diagnostics[0]?.message).toContain('deprecated')
   })
 
-  it('接受未调用废弃声明的源码', async () => {
+  test('接受未调用废弃声明的源码', async () => {
     expect(await readDeprecatedApiDiagnostics([{
       filePath: 'fixtures/valid.ts',
       source: [
@@ -39,7 +39,7 @@ describe('废弃 API 守卫', () => {
     }])).toEqual([])
   })
 
-  it('支持物理不存在目录中的跨文件相对导入', async () => {
+  test('支持物理不存在目录中的跨文件相对导入', async () => {
     const diagnostics = await readDeprecatedApiDiagnostics([
       {
         filePath: 'fixtures/shared/legacy.ts',

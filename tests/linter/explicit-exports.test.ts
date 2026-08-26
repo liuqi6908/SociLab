@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readExplicitExportDiagnostics } from './explicit-exports'
 
 /** -------------------- 测试 -------------------- */
 describe('显式导出守卫', () => {
-  it('捕获源码 default export、星号导出与缺少命名导出的模块', async () => {
+  test('捕获源码 default export、星号导出与缺少命名导出的模块', async () => {
     const diagnostics = await readExplicitExportDiagnostics([
       {
         filePath: 'fixture.ts',
@@ -39,7 +39,7 @@ describe('显式导出守卫', () => {
     ])
   })
 
-  it('接受命名导出以及无需导出的应用入口', async () => {
+  test('接受命名导出以及无需导出的应用入口', async () => {
     expect(await readExplicitExportDiagnostics([
       {
         filePath: 'fixture.ts',
@@ -79,7 +79,7 @@ describe('显式导出守卫', () => {
     ])).toEqual([])
   })
 
-  it('只豁免实际应用入口路径', async () => {
+  test('只豁免实际应用入口路径', async () => {
     const diagnostics = await readExplicitExportDiagnostics([
       {
         filePath: 'packages/example/src/main.ts',

@@ -10,7 +10,10 @@ export function createAppRouter(basepath = import.meta.env.BASE_URL) {
 }
 
 /** -------------------- 类型注册 -------------------- */
-export type AppRouter = ReturnType<typeof createAppRouter>
+/** 当前管理端入口共享的 Router */
+export const router = createAppRouter()
+
+export type AppRouter = typeof router
 
 declare module '@tanstack/react-router' {
   interface Register {

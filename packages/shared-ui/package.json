@@ -10,11 +10,6 @@
     "./styles.css": "./src/styles/index.css",
     "./utils": "./src/utils/index.ts"
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest --root ../.. run tests/shared-ui",
-    "typecheck": "tsc -p tsconfig.json"
-  },
   "dependencies": {
     "clsx": "^2.1.1",
     "react": "^19.2.8",

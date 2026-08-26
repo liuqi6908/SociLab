@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
+import { RouterProvider } from '@tanstack/react-router'
 import { cleanup, render } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { App } from '../../projects/admin/src/app'
-import { createAppRouter } from '../../projects/admin/src/router'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { createAppRouter, router } from '../../projects/admin/src/router'
 
 /** 捕获 App 交给真实 TanStack Router Provider 的 Router 实例 */
 const routers = vi.hoisted(() => [] as object[])
@@ -28,12 +28,17 @@ afterEach(() => {
   routers.length = 0
 })
 
+/** 使用入口共享 Router 创建测试应用 */
+function App() {
+  return <RouterProvider router={router} />
+}
+
 describe('admin router lifecycle', () => {
-  it('使用部署基础路径创建 Router', () => {
+  test('使用部署基础路径创建 Router', () => {
     expect(createAppRouter('/management/').basepath).toBe('/management/')
   })
 
-  it('app 重渲染时复用同一个 Router 实例', () => {
+  test('app 重渲染时复用同一个 Router 实例', () => {
     const view = render(<App />)
 
     view.rerender(<App />)

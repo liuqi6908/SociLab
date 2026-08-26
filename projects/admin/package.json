@@ -5,9 +5,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "preview": "vite preview",
-    "test": "vitest --root ../.. run tests/admin",
-    "typecheck": "tsc -p tsconfig.json"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@socilab/sdk": "workspace:*",

@@ -1,5 +1,26 @@
+engineStrict: true
+enableGlobalVirtualStore: false
+strictPeerDependencies: true
+strictDepBuilds: true
+nodeVersion: 24.18.1
+shellEmulator: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - semver@5.7.2
+  - semver@6.3.1
+updateConfig:
+  ignoreDependencies:
+    - '@types/node'
+    - typescript
+verifyDepsBeforeRun: error
 packages:
   - packages/*
   - projects/*
 allowBuilds:
   esbuild: true
+ignoredOptionalDependencies:
+  - '@rolldown/binding-wasm32-wasi'
+packageExtensions:
+  eslint-plugin-perfectionist@5.10.0:
+    dependencies:
+      typescript: 6.0.3

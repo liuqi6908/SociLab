@@ -1,8 +1,8 @@
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import { readReactCompilerDiagnostics, readReactCompilerSources } from './react-compiler'
 
 /** -------------------- 测试 -------------------- */
-it('真实 React Compiler 守卫捕获不可编译的 TSX', () => {
+test('真实 React Compiler 守卫捕获不可编译的 TSX', () => {
   const result = readReactCompilerDiagnostics([{
     filePath: 'invalid.fixture.tsx',
     source: `
@@ -24,7 +24,7 @@ it('真实 React Compiler 守卫捕获不可编译的 TSX', () => {
   expect(result.diagnostics.map(item => item.kind)).not.toEqual([])
 })
 
-it('真实 React Compiler 守卫接受可编译的 TSX', () => {
+test('真实 React Compiler 守卫接受可编译的 TSX', () => {
   const result = readReactCompilerDiagnostics([{
     filePath: 'valid.fixture.tsx',
     source: `
@@ -45,7 +45,7 @@ it('真实 React Compiler 守卫接受可编译的 TSX', () => {
   expect(result.diagnostics).toEqual([])
 })
 
-it('前端三处 TSX 保持零失败预算', () => {
+test('前端三处 TSX 保持零失败预算', () => {
   const result = readReactCompilerDiagnostics(readReactCompilerSources())
 
   expect(result.compiledFunctions).toBeGreaterThan(0)

@@ -1,7 +1,8 @@
+import { ApiProvider } from '@socilab/sdk/react'
+import { RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { App } from './app'
-import { Provider } from './providers/query'
+import { router } from './router'
 import './styles/index.css'
 
 /** -------------------- 应用入口 -------------------- */
@@ -12,8 +13,8 @@ if (!root)
 
 createRoot(root).render(
   <StrictMode>
-    <Provider>
-      <App />
-    </Provider>
+    <ApiProvider>
+      <RouterProvider router={router} />
+    </ApiProvider>
   </StrictMode>,
 )

@@ -1,4 +1,4 @@
-import type { metaInfoSchema } from '@socilab/api'
+import type { MetaApiHandlers, metaInfoSchema } from '@socilab/api'
 import type { z } from 'zod'
 
 /** -------------------- 类型 -------------------- */
@@ -11,17 +11,11 @@ export interface MetaHandlersOptions {
   getInfo?: () => MetaInfo | Promise<MetaInfo>
 }
 
-/** 服务元信息 handler */
-export interface MetaHandlers {
-  /** 读取服务元信息 */
-  info: () => MetaInfo | Promise<MetaInfo>
-}
-
 /** -------------------- 核心函数 -------------------- */
 /** 创建服务元信息 handler */
-export function createMetaHandlers(options: MetaHandlersOptions = {}): MetaHandlers {
+export function createMetaHandlers(options: MetaHandlersOptions = {}): MetaApiHandlers {
   return {
-    info: options.getInfo ?? getDefaultMetaInfo,
+    info: () => (options.getInfo ?? getDefaultMetaInfo)(),
   }
 }
 

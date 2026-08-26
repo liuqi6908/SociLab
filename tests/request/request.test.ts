@@ -1,13 +1,14 @@
 import type { HttpError } from '@socilab/request'
 import { createRequest } from '@socilab/request'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 describe('create request', () => {
-  it('removes a trailing base URL slash while preserving the successful Response', async () => {
+  test('removes a trailing base URL slash while preserving the successful Response', async () => {
     let receivedUrl = ''
     const response = new Response('{"ok":true}', { status: 200 })
     const request = createRequest({
       baseUrl: 'https://api.example.test/root/',
+      system: 'socilab-test',
       fetch: (input) => {
         receivedUrl = new Request(input).url
         return Promise.resolve(response)
@@ -21,11 +22,12 @@ describe('create request', () => {
     expect(result).toBe(response)
   })
 
-  it('keeps absolute URLs and call-site RequestInit semantics', async () => {
+  test('keeps absolute URLs and call-site RequestInit semantics', async () => {
     const controller = new AbortController()
     let received: Request | undefined
     const request = createRequest({
       baseUrl: 'https://api.example.test/root',
+      system: 'socilab-test',
       fetch: (input, init) => {
         received = new Request(input, init)
         return Promise.resolve(Response.json({ ok: true }))
@@ -49,16 +51,17 @@ describe('create request', () => {
     expect(received?.signal.aborted).toBe(true)
   })
 
-  it('normalizes a JSON error response into an HttpError with business context', async () => {
+  test('normalizes a JSON error response into an HttpError with business context', async () => {
     const request = createRequest({
       baseUrl: 'https://api.example.test',
+      system: 'socilab-test',
       fetch: () => Promise.resolve(new Response(JSON.stringify({
         message: '输入无效',
         code: 'INVALID_INPUT',
         details: {
           field: 'email',
-          issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
         },
+        issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
       }), { status: 422 })),
     })
 
@@ -69,15 +72,15 @@ describe('create request', () => {
       code: 'INVALID_INPUT',
       details: {
         field: 'email',
-        issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
       },
       issues: [{ code: 'invalid_format', message: '格式错误', path: 'email' }],
     } satisfies Partial<HttpError>)
   })
 
-  it('continues to accept legacy top-level validation issues', async () => {
+  test('读取标准顶层校验问题', async () => {
     const request = createRequest({
       baseUrl: 'https://api.example.test',
+      system: 'socilab-test',
       fetch: () => Promise.resolve(new Response(JSON.stringify({
         message: '输入无效',
         issues: [{ code: 'legacy', message: '旧格式错误', path: 'name' }],
@@ -89,9 +92,10 @@ describe('create request', () => {
     } satisfies Partial<HttpError>)
   })
 
-  it('uses non-JSON response text as a readable HttpError message', async () => {
+  test('uses non-JSON response text as a readable HttpError message', async () => {
     const request = createRequest({
       baseUrl: 'https://api.example.test',
+      system: 'socilab-test',
       fetch: () => Promise.resolve(new Response('upstream unavailable', { status: 503 })),
     })
 
@@ -102,12 +106,13 @@ describe('create request', () => {
     } satisfies Partial<HttpError>)
   })
 
-  it('uses an HTTP status fallback for empty, empty-object, and malformed error bodies', async () => {
+  test('uses an HTTP status fallback for empty, empty-object, and malformed error bodies', async () => {
     const bodies = ['', '{}', '{invalid']
 
     for (const body of bodies) {
       const request = createRequest({
         baseUrl: 'https://api.example.test',
+        system: 'socilab-test',
         fetch: () => Promise.resolve(new Response(body, { status: 502 })),
       })
 
@@ -117,5 +122,43 @@ describe('create request', () => {
         message: 'HTTP 502',
       } satisfies Partial<HttpError>)
     }
+  })
+
+  test('为协议适配器保留非成功响应并标记标准错误来源', async () => {
+    const response = Response.json({ message: '失败' }, { status: 503 })
+    const request = createRequest({
+      baseUrl: 'https://api.example.test',
+      system: 'socilab-test',
+      fetch: () => Promise.resolve(response),
+    })
+
+    await expect(request.rawFetch('/meta/info')).resolves.toBe(response)
+    await expect(request.fetch('/meta/info')).rejects.toMatchObject({
+      name: 'HttpError',
+      system: 'socilab-test',
+      status: 503,
+    })
+  })
+
+  test('派生地址时保留动态 Header 且调用点拥有最终覆盖权', async () => {
+    let received: Request | undefined
+    let token = 'first'
+    const request = createRequest({
+      baseUrl: 'https://api.example.test',
+      system: 'socilab-test',
+      headers: () => ({ 'authorization': `Bearer ${token}`, 'x-source': 'default' }),
+      fetch: (input, init) => {
+        received = new Request(input, init)
+        return Promise.resolve(Response.json({ ok: true }))
+      },
+    }).withBaseUrl('https://api.example.test/api/rpc')
+
+    token = 'second'
+    await request.rawFetch('/meta/info', { headers: { 'x-source': 'call' } })
+
+    expect(request.system).toBe('socilab-test')
+    expect(received?.url).toBe('https://api.example.test/api/rpc/meta/info')
+    expect(received?.headers.get('authorization')).toBe('Bearer second')
+    expect(received?.headers.get('x-source')).toBe('call')
   })
 })

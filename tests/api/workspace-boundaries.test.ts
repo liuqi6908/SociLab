@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 /** -------------------- 类型 -------------------- */
 interface PackageManifest {
@@ -39,15 +39,15 @@ interface WorkspaceFixtureOptions {
 const rootDir = fileURLToPath(new URL('../..', import.meta.url))
 
 describe('workspace package boundaries', () => {
-  it('@socilab imports are declared as production dependencies', () => {
+  test('@socilab imports are declared as production dependencies', () => {
     expect(readUndeclaredDependencyViolations(rootDir)).toEqual([])
   })
 
-  it('workspace source only crosses packages through public exports', () => {
+  test('workspace source only crosses packages through public exports', () => {
     expect(readPublicImportViolations(rootDir)).toEqual([])
   })
 
-  it('模块引用收集覆盖 CSS、TypeScript 扩展名与 require 语法', () => {
+  test('模块引用收集覆盖 CSS、TypeScript 扩展名与 require 语法', () => {
     const fixtureRoot = createWorkspaceFixture({
       files: {
         'src/component.tsx': 'export { cn } from \'@socilab/shared-ui\'\n',
@@ -90,7 +90,7 @@ describe('workspace package boundaries', () => {
     }
   })
 
-  it('隔离 fixture 捕获缺依赖、源码深导入与跨 workspace 相对导入', () => {
+  test('隔离 fixture 捕获缺依赖、源码深导入与跨 workspace 相对导入', () => {
     const undeclaredRoot = createWorkspaceFixture({
       dependency: false,
       files: {

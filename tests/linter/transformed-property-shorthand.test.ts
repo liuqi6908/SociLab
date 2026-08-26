@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   formatTransformedPropertyShorthandDiagnostics,
   readTransformedPropertyShorthandDiagnostics,
@@ -7,7 +7,7 @@ import {
 } from './transformed-property-shorthand'
 
 /** -------------------- 测试 -------------------- */
-it('对象字段转换属性简写检查器识别同名来源的内联转换', async () => {
+test('对象字段转换属性简写检查器识别同名来源的内联转换', async () => {
   const warnings: string[] = []
   const diagnostics = await warnTransformedPropertyShorthand([{
     filePath: 'invalid.fixture.ts',
@@ -45,7 +45,7 @@ it('对象字段转换属性简写检查器识别同名来源的内联转换', a
   expect(warnings).toEqual([message])
 })
 
-it('对象字段转换属性简写检查器提示同作用域返回字段重命名', async () => {
+test('对象字段转换属性简写检查器提示同作用域返回字段重命名', async () => {
   const diagnostics = await readTransformedPropertyShorthandDiagnostics([{
     filePath: 'alias-return-invalid.fixture.ts',
     source: `
@@ -73,7 +73,7 @@ it('对象字段转换属性简写检查器提示同作用域返回字段重命�
   ])
 })
 
-it('对象字段转换属性简写检查器提示小型返回对象混合直接读取与内联派生', async () => {
+test('对象字段转换属性简写检查器提示小型返回对象混合直接读取与内联派生', async () => {
   const diagnostics = await readTransformedPropertyShorthandDiagnostics([{
     filePath: 'mixed-return-invalid.fixture.ts',
     source: `
@@ -113,7 +113,7 @@ it('对象字段转换属性简写检查器提示小型返回对象混合直接�
   ])
 })
 
-it('对象字段转换属性简写检查器提示小型调用对象混合属性简写与内联派生', async () => {
+test('对象字段转换属性简写检查器提示小型调用对象混合属性简写与内联派生', async () => {
   const diagnostics = await readTransformedPropertyShorthandDiagnostics([{
     filePath: 'mixed-call-invalid.fixture.ts',
     source: `
@@ -154,7 +154,7 @@ it('对象字段转换属性简写检查器提示小型调用对象混合属性�
   ])
 })
 
-it('对象字段转换属性简写检查器接受提前命名并使用属性简写', async () => {
+test('对象字段转换属性简写检查器接受提前命名并使用属性简写', async () => {
   expect(await readTransformedPropertyShorthandDiagnostics([{
     filePath: 'valid.fixture.ts',
     source: `
@@ -236,7 +236,7 @@ it('对象字段转换属性简写检查器接受提前命名并使用属性简�
   }])).toEqual([])
 })
 
-it('真实仓库只报告建议而不加入硬失败预算', async () => {
+test('真实仓库只报告建议而不加入硬失败预算', async () => {
   const sources = readTransformedPropertyShorthandSources()
 
   await expect(warnTransformedPropertyShorthand(sources)).resolves.toEqual([])

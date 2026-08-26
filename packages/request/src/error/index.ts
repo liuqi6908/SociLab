@@ -13,6 +13,8 @@ export interface HttpErrorIssue {
 
 /** HttpError 的初始化数据 */
 export interface HttpErrorInput {
+  /** 后端系统稳定标识 */
+  system: string
   /** HTTP 状态码 */
   status: number
   /** 可读错误信息 */
@@ -28,6 +30,8 @@ export interface HttpErrorInput {
 /** -------------------- 核心类 -------------------- */
 /** 非成功 HTTP 响应的统一错误 */
 export class HttpError extends Error {
+  /** 后端系统稳定标识 */
+  public readonly system: string
   /** HTTP 状态码 */
   public readonly status: number
   /** 稳定业务错误码 */
@@ -40,6 +44,7 @@ export class HttpError extends Error {
   public constructor(input: HttpErrorInput) {
     super(input.message)
     this.name = 'HttpError'
+    this.system = input.system
     this.status = input.status
     this.code = input.code
     this.details = input.details

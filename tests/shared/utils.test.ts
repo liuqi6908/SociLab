@@ -1,8 +1,8 @@
 import { isPlainRecord, jsonParse } from '@socilab/shared'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 describe('shared utils', () => {
-  it('解析合法 JSON 并在语法错误时返回 undefined', () => {
+  test('解析合法 JSON 并在语法错误时返回 undefined', () => {
     expect(jsonParse('{"name":"SociLab","enabled":true}')).toEqual({
       name: 'SociLab',
       enabled: true,
@@ -11,7 +11,7 @@ describe('shared utils', () => {
     expect(jsonParse('{invalid')).toBeUndefined()
   })
 
-  it('仅接受 Object 或 null 原型的普通记录', () => {
+  test('仅接受 Object 或 null 原型的普通记录', () => {
     class Example {}
 
     const nullPrototype = Object.create(null) as Record<string, unknown>

@@ -1,16 +1,37 @@
 import type { NestedClient } from '@orpc/client'
-import type { RequestClient } from '../core/index.ts'
+import type { RequestTransport } from '../core/index.ts'
 import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
+import { BatchLinkPlugin } from '@orpc/client/plugins'
+
+/** -------------------- 类型 -------------------- */
+/** oRPC HTTP client 的批处理边界 */
+export interface OrpcClientOptions {
+  /** 按 procedure 路径排除不能进入 batch 的请求 */
+  batch?: {
+    /** 返回 true 时当前请求独立发送 */
+    exclude?: (path: readonly string[]) => boolean
+  }
+}
 
 /** -------------------- 核心函数 -------------------- */
-/** 使用统一请求能力创建类型化 oRPC 客户端 */
+/** 使用统一原始传输创建类型化 oRPC 客户端 */
 export function createOrpcClient<TClient extends NestedClient<Record<never, never>>>(
-  request: RequestClient,
-  rpcPath: string,
+  transport: RequestTransport,
+  options: OrpcClientOptions = {},
 ) {
-  return createORPCClient<TClient>(new RPCLink({
-    url: new URL(rpcPath.replace(/^\/+/, ''), `${request.baseUrl}/`).toString(),
-    fetch: request.fetch,
-  }))
+  const link = new RPCLink({
+    url: transport.rpcBaseUrl ?? transport.baseUrl,
+    fetch: request => transport.rawFetch(request),
+    plugins: [
+      new BatchLinkPlugin({
+        exclude: ({ path }) => options.batch?.exclude?.(path) ?? false,
+        groups: [{ condition: () => true, context: {} }],
+        maxSize: 10,
+        maxUrlLength: 2_048,
+      }),
+    ],
+  })
+
+  return createORPCClient<TClient>(link)
 }

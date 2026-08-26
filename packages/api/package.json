@@ -6,13 +6,9 @@
     ".": "./src/index.ts",
     "./paths": "./src/paths/index.ts"
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest --root ../.. run tests/api"
-  },
   "dependencies": {
     "@orpc/contract": "1.15.0",
+    "@socilab/shared": "workspace:*",
     "zod": "4.4.3"
   }
 }

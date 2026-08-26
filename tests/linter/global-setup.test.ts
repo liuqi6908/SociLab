@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import setupRepositoryGuards, { runRepositoryGuards } from './global-setup'
 
 /** -------------------- 常量 -------------------- */
@@ -43,7 +43,7 @@ function createRepositoryRoot(prefix: string) {
 }
 
 /** -------------------- 测试 -------------------- */
-it('全仓 setup 同时报告质量与残留 gate 的真实诊断', async () => {
+test('全仓 setup 同时报告质量与残留 gate 的真实诊断', async () => {
   const root = createRepositoryRoot('socilab-global-setup-invalid-')
 
   try {
@@ -62,7 +62,7 @@ it('全仓 setup 同时报告质量与残留 gate 的真实诊断', async () => 
   }
 })
 
-it('同一次 Vitest run 执行两个 spec 时只完成一次全仓 setup', () => {
+test('同一次 Vitest run 执行两个 spec 时只完成一次全仓 setup', () => {
   const root = createRepositoryRoot('socilab-global-setup-once-')
   const setupTracePath = path.join(root, 'setup.log')
   const specTracePath = path.join(root, 'spec.log')
@@ -88,7 +88,7 @@ it('同一次 Vitest run 执行两个 spec 时只完成一次全仓 setup', () =
       'tests/first/first.test.ts': [
         'import { appendFileSync } from \'node:fs\'',
         '',
-        'it(\'执行第一个 spec\', () => {',
+        'test(\'执行第一个 spec\', () => {',
         `  appendFileSync(${specTrace}, 'first\\n')`,
         '})',
         '',
@@ -96,7 +96,7 @@ it('同一次 Vitest run 执行两个 spec 时只完成一次全仓 setup', () =
       'tests/second/second.test.ts': [
         'import { appendFileSync } from \'node:fs\'',
         '',
-        'it(\'执行第二个 spec\', () => {',
+        'test(\'执行第二个 spec\', () => {',
         `  appendFileSync(${specTrace}, 'second\\n')`,
         '})',
         '',
@@ -137,7 +137,7 @@ it('同一次 Vitest run 执行两个 spec 时只完成一次全仓 setup', () =
   }
 })
 
-it('默认 Vitest setup 入口委托当前项目根目录', async () => {
+test('默认 Vitest setup 入口委托当前项目根目录', async () => {
   const root = createRepositoryRoot('socilab-global-setup-root-')
 
   try {

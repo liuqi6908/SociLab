@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   readTailwindCanonicalDiagnostics,
   readTailwindCssConflictDiagnostics,
@@ -6,7 +6,7 @@ import {
 } from './tailwind-canonical'
 
 /** -------------------- 测试 -------------------- */
-it('tailwind canonical 检查器识别非 canonical utility', async () => {
+test('tailwind canonical 检查器识别非 canonical utility', async () => {
   const diagnostics = await readTailwindCanonicalDiagnostics([{
     filePath: 'invalid.fixture.tsx',
     source: `
@@ -22,7 +22,7 @@ it('tailwind canonical 检查器识别非 canonical utility', async () => {
   ])
 })
 
-it('tailwind CSS 属性冲突检查器识别同一静态列表中的覆盖', async () => {
+test('tailwind CSS 属性冲突检查器识别同一静态列表中的覆盖', async () => {
   const diagnostics = await readTailwindCssConflictDiagnostics([{
     filePath: 'invalid.fixture.tsx',
     source: `
@@ -41,7 +41,7 @@ it('tailwind CSS 属性冲突检查器识别同一静态列表中的覆盖', asy
   ])
 })
 
-it('tailwind 守卫接受 canonical 且无冲突的 utility', async () => {
+test('tailwind 守卫接受 canonical 且无冲突的 utility', async () => {
   const sources = [{
     filePath: 'valid.fixture.tsx',
     source: `
@@ -55,7 +55,7 @@ it('tailwind 守卫接受 canonical 且无冲突的 utility', async () => {
   await expect(readTailwindCssConflictDiagnostics(sources)).resolves.toEqual([])
 })
 
-it('tailwind canonical 检查器识别 LSP 已验证的等价 utility', async () => {
+test('tailwind canonical 检查器识别 LSP 已验证的等价 utility', async () => {
   const diagnostics = await readTailwindCanonicalDiagnostics([{
     filePath: 'fixture.tsx',
     source: `
@@ -91,7 +91,7 @@ it('tailwind canonical 检查器识别 LSP 已验证的等价 utility', async ()
   ])
 })
 
-it('tailwind canonical 检查器使用 spacing 函数与比例简化任意值', async () => {
+test('tailwind canonical 检查器使用 spacing 函数与比例简化任意值', async () => {
   const diagnostics = await readTailwindCanonicalDiagnostics([{
     filePath: 'fixture.tsx',
     source: `
@@ -112,7 +112,7 @@ it('tailwind canonical 检查器使用 spacing 函数与比例简化任意值', 
   ])
 })
 
-it('tailwind CSS 属性冲突检查器识别顶层选择器变体的相同声明', async () => {
+test('tailwind CSS 属性冲突检查器识别顶层选择器变体的相同声明', async () => {
   const diagnostics = await readTailwindCssConflictDiagnostics([{
     filePath: 'fixture.tsx',
     source: `
@@ -135,7 +135,7 @@ it('tailwind CSS 属性冲突检查器识别顶层选择器变体的相同声明
   ])
 })
 
-it('tailwind CSS 属性冲突检查器保留嵌套规则上下文并接受拆分 cn 语义分组', async () => {
+test('tailwind CSS 属性冲突检查器保留嵌套规则上下文并接受拆分 cn 语义分组', async () => {
   await expect(readTailwindCssConflictDiagnostics([{
     filePath: 'nested-context.tsx',
     source: `
@@ -157,7 +157,7 @@ it('tailwind CSS 属性冲突检查器保留嵌套规则上下文并接受拆分
   }])).resolves.toEqual([])
 })
 
-it('真实前端源码通过 canonical 与 CSS 冲突硬守卫', async () => {
+test('真实前端源码通过 canonical 与 CSS 冲突硬守卫', async () => {
   const sources = readTailwindSources()
 
   await expect(readTailwindCanonicalDiagnostics(sources)).resolves.toEqual([])

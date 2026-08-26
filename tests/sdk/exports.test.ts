@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 /** -------------------- 类型 -------------------- */
 interface ServerPackageManifest {
@@ -29,7 +29,7 @@ const serverDir = path.join(rootDir, 'projects/server')
 const tscPath = path.join(rootDir, 'node_modules/typescript/bin/tsc')
 
 describe('workspace package exports', () => {
-  it('resolves every public package through Node bare specifiers', () => {
+  test('resolves every public package through Node bare specifiers', () => {
     const output = execFileSync(process.execPath, [
       '--input-type=module',
       '--eval',
@@ -56,7 +56,7 @@ describe('workspace package exports', () => {
     })
   })
 
-  it('bundles package dependencies through Vite public entry resolution', async () => {
+  test('bundles package dependencies through Vite public entry resolution', async () => {
     const root = fileURLToPath(new URL('../../packages/sdk', import.meta.url))
     const bundle = await build({
       build: {
@@ -83,7 +83,7 @@ describe('workspace package exports', () => {
     ))).toBe(true)
   })
 
-  it('freshly builds and resolves the server public package export', () => {
+  test('freshly builds and resolves the server public package export', () => {
     const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'socilab-server-export-'))
     const packageDir = path.join(fixtureRoot, 'node_modules/@socilab/server')
     const manifest = JSON.parse(readFileSync(

@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseEnv } from 'node:util'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createClientViteConfig } from '../../projects/client/vite.config'
 
 describe('client vite config', () => {
-  it('环境示例可以直接创建默认 Client 配置', () => {
+  test('环境示例可以直接创建默认 Client 配置', () => {
     const source = readFileSync(
       path.join(process.cwd(), 'projects/client/.env.example'),
       'utf8',
@@ -25,7 +25,7 @@ describe('client vite config', () => {
     })
   })
 
-  it('把 Client 环境覆盖同时应用到开发、预览和基础路径', () => {
+  test('把 Client 环境覆盖同时应用到开发、预览和基础路径', () => {
     const config = createClientViteConfig({
       CLIENT_API_PROXY_TARGET: 'https://server.example.test',
       CLIENT_BASE_PATH: '/learning/',

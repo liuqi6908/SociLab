@@ -1,8 +1,8 @@
+import { useApi } from '@socilab/sdk/react'
 import { Logo } from '@socilab/shared-ui/components/logo'
 import { cn } from '@socilab/shared-ui/utils'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useApi } from '../providers/query'
 
 /** -------------------- 路由 -------------------- */
 export const Route = createFileRoute('/')({ component: IndexRoute })

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   readManifestResidualDiagnostics,
   readSourceResidualDiagnostics,
@@ -25,7 +25,7 @@ function writeRepositoryFiles(root: string, files: Readonly<Record<string, strin
 }
 
 /** -------------------- 残留扫描 -------------------- */
-it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标识', async () => {
+test('源码残留扫描捕获旧包、内部领域包、源码模块与产品标识', async () => {
   const diagnostics = await readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/invalid.ts',
     source: [
@@ -90,7 +90,7 @@ it('源码残留扫描捕获旧包、内部领域包、源码模块与产品标�
   ])
 })
 
-it('源码残留扫描允许生态插件包与普通复合技术词', async () => {
+test('源码残留扫描允许生态插件包与普通复合技术词', async () => {
   expect(await readSourceResidualDiagnostics([{
     filePath: 'vite.config.ts',
     source: [
@@ -105,7 +105,7 @@ it('源码残留扫描允许生态插件包与普通复合技术词', async () =
   }])).toEqual([])
 })
 
-it('源码残留扫描捕获 import equals、类型导入、require 与动态 import 模块形态', async () => {
+test('源码残留扫描捕获 import equals、类型导入、require 与动态 import 模块形态', async () => {
   const diagnostics = await readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/module-forms.ts',
     source: [
@@ -131,7 +131,7 @@ it('源码残留扫描捕获 import equals、类型导入、require 与动态 im
   ])
 })
 
-it('源码残留扫描允许 electronic 与 @example/electron 等 near-miss 模块', async () => {
+test('源码残留扫描允许 electronic 与 @example/electron 等 near-miss 模块', async () => {
   expect(await readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/near-miss.ts',
     source: [
@@ -151,7 +151,7 @@ it('源码残留扫描允许 electronic 与 @example/electron 等 near-miss 模�
   }])).toEqual([])
 })
 
-it('源码残留扫描识别无替换模板说明符且忽略表达式模板', async () => {
+test('源码残留扫描识别无替换模板说明符且忽略表达式模板', async () => {
   const diagnostics = await readSourceResidualDiagnostics([{
     filePath: 'projects/client/src/template-modules.ts',
     source: [
@@ -168,7 +168,7 @@ it('源码残留扫描识别无替换模板说明符且忽略表达式模板', a
     .toEqual(['@socilab/plugin', '../../runtime/index'])
 })
 
-it('manifest 残留扫描分析依赖键而非原始 substring', () => {
+test('manifest 残留扫描分析依赖键而非原始 substring', () => {
   expect(readManifestResidualDiagnostics(
     'fixtures/invalid/package.json',
     JSON.stringify({
@@ -209,7 +209,7 @@ it('manifest 残留扫描分析依赖键而非原始 substring', () => {
   )).toEqual([])
 })
 
-it('真实仓库扫描覆盖配置、样式、HTML、非 fixture 测试与 package scripts', async () => {
+test('真实仓库扫描覆盖配置、样式、HTML、非 fixture 测试与 package scripts', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-residual-'))
 
   try {
@@ -238,7 +238,7 @@ it('真实仓库扫描覆盖配置、样式、HTML、非 fixture 测试与 packa
   }
 })
 
-it('真实仓库扫描排除受控目录并允许计划强制的构建插件包名', async () => {
+test('真实仓库扫描排除受控目录并允许计划强制的构建插件包名', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-residual-valid-'))
   const ignoredManifest = JSON.stringify({
     dependencies: { '@qygent/shared': 'workspace:*' },
@@ -292,6 +292,6 @@ it('真实仓库扫描排除受控目录并允许计划强制的构建插件包�
   }
 })
 
-it('真实仓库源码、配置与依赖声明无领域残留', async () => {
+test('真实仓库源码、配置与依赖声明无领域残留', async () => {
   expect(await scanRepositoryResiduals()).toEqual([])
 })

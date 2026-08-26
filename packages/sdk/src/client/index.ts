@@ -1,7 +1,7 @@
 import type { ApiClient } from '@socilab/api'
 import type { ClientOptions } from '../types/index.ts'
-import { API_RPC_PATH } from '@socilab/api'
-import { createOrpcClient, createRequest } from '@socilab/request'
+import { createRequest } from '@socilab/request'
+import { createApiClient } from './transport.ts'
 
 /** -------------------- 核心类 -------------------- */
 /** 客户端和管理端共用的类型化 API SDK */
@@ -12,10 +12,10 @@ export class Client {
   public readonly rpc: ApiClient
 
   private constructor(options: ClientOptions) {
-    const request = createRequest(options)
+    const request = createRequest({ ...options, system: 'socilab' })
 
     this.baseUrl = request.baseUrl
-    this.rpc = createOrpcClient<ApiClient>(request, API_RPC_PATH)
+    this.rpc = createApiClient(request)
   }
 
   /** 创建共享 SDK 客户端 */

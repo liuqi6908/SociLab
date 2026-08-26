@@ -17,6 +17,7 @@
     "lintstaged",
     "oRPC",
     "pnpm",
+    "Promisable",
     "SociLab",
     "Tailwind",
     "TanStack",
@@ -24,6 +25,7 @@
     "Turborepo",
     "Vite",
     "Vitest",
+    "wasi",
     "Zod"
   ]
 }

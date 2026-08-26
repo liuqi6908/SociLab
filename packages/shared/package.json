@@ -5,10 +5,5 @@
   "exports": {
     ".": "./src/index.ts",
     "./node": "./src/node/index.ts"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest --root ../.. run tests/shared --passWithNoTests"
   }
 }

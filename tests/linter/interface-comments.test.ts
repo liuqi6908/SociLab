@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readInterfaceCommentDiagnostics } from './interface-comments'
 
 /** -------------------- 测试 -------------------- */
 describe('公共 Interface JSDoc 守卫', () => {
-  it('捕获导出 Interface 声明与成员缺失的 JSDoc', async () => {
+  test('捕获导出 Interface 声明与成员缺失的 JSDoc', async () => {
     const diagnostics = await readInterfaceCommentDiagnostics([
       {
         filePath: 'fixture.ts',
@@ -32,7 +32,7 @@ describe('公共 Interface JSDoc 守卫', () => {
     ])
   })
 
-  it('接受完整公共 JSDoc 且不要求内部 Interface', async () => {
+  test('接受完整公共 JSDoc 且不要求内部 Interface', async () => {
     expect(await readInterfaceCommentDiagnostics([
       {
         filePath: 'fixture.ts',
@@ -53,7 +53,7 @@ describe('公共 Interface JSDoc 守卫', () => {
     ])).toEqual([])
   })
 
-  it('检查本文件命名导出和别名导出的本地 Interface', async () => {
+  test('检查本文件命名导出和别名导出的本地 Interface', async () => {
     const diagnostics = await readInterfaceCommentDiagnostics([
       {
         filePath: 'indirect-invalid.ts',

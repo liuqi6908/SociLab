@@ -4,3 +4,6 @@ export type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Re
 
 /** 只读的未知对象 */
 export type UnknownRecord = Record<string, unknown>
+
+/** 同步或异步返回值 */
+export type Promisable<T> = PromiseLike<T> | T

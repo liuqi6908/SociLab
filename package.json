@@ -5,7 +5,8 @@
   "private": true,
   "packageManager": "pnpm@11.18.0",
   "engines": {
-    "node": ">=24.18.1 <25"
+    "node": ">=24.18.1 <25",
+    "pnpm": "11.18.0"
   },
   "scripts": {
     "dev": "turbo watch dev --filter=@socilab/server --filter=@socilab/client --filter=@socilab/admin",
@@ -13,10 +14,14 @@
     "dev:client": "turbo watch dev --filter=@socilab/client",
     "dev:admin": "turbo watch dev --filter=@socilab/admin",
     "build": "turbo run build",
-    "lint": "eslint --cache .",
-    "typecheck": "turbo run typecheck",
-    "test": "vitest run --passWithNoTests",
-    "test:linter": "vitest run tests/linter --passWithNoTests",
+    "lint": "turbo run lint:repo",
+    "lint:repo": "eslint --cache .",
+    "typecheck": "turbo run typecheck:repo",
+    "typecheck:repo": "node node_modules/@typescript/native/bin/tsc",
+    "test": "turbo run test:repo",
+    "test:repo": "vitest run",
+    "test:linter": "turbo run test:linter:repo",
+    "test:linter:repo": "vitest run tests/linter",
     "spellcheck": "cspell lint --config cspell.config.mjs --gitignore --no-progress \"**/*.{cjs,js,json,jsonc,jsx,md,mjs,ts,tsx,yaml,yml}\"",
     "start": "pnpm --filter @socilab/server start",
     "prepare": "husky"
@@ -33,7 +38,7 @@
     "@orpc/server": "1.15.0",
     "@orpc/tanstack-query": "1.15.0",
     "@orpc/zod": "1.15.0",
-    "@rolldown/plugin-babel": "^0.2.3",
+    "@rolldown/plugin-babel": "0.2.3",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-router": "^1.139.16",
@@ -44,7 +49,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "@vitejs/plugin-react": "^6.0.5",
+    "@vitejs/plugin-react": "6.0.5",
     "babel-plugin-react-compiler": "1.0.0",
     "clsx": "^2.1.1",
     "cspell": "^10.0.1",

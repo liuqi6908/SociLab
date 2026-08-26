@@ -1,11 +1,11 @@
 // cspell:words aliyuncs
 import { readFileSync } from 'node:fs'
 import { parseEnv } from 'node:util'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { loadServerConfig } from '../../projects/server/src/infra/config'
 
 describe('server environment config', () => {
-  it('在未配置未来服务时只启用默认网络配置', () => {
+  test('在未配置未来服务时只启用默认网络配置', () => {
     expect(loadServerConfig({})).toEqual({
       captcha: undefined,
       database: undefined,
@@ -21,7 +21,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('复制服务端环境示例时不会误启用未来服务', () => {
+  test('复制服务端环境示例时不会误启用未来服务', () => {
     const source = readFileSync(
       new URL('../../projects/server/.env.example', import.meta.url),
       'utf8',
@@ -42,7 +42,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('解析网络覆盖值并拒绝非法端口', () => {
+  test('解析网络覆盖值并拒绝非法端口', () => {
     expect(loadServerConfig({
       CORS_ORIGINS: ' https://client.example.test, ,https://admin.example.test ',
       SERVER_HOST: ' 0.0.0.0 ',
@@ -57,7 +57,7 @@ describe('server environment config', () => {
       expect(() => loadServerConfig({ SERVER_PORT: port })).toThrow()
   })
 
-  it('忽略全部为空白的未来服务配置', () => {
+  test('忽略全部为空白的未来服务配置', () => {
     const config = loadServerConfig({
       CAPTCHA_SITE_KEY: ' ',
       DATABASE_USER: '',
@@ -77,7 +77,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('使用默认连接参数解析完整 PostgreSQL 配置', () => {
+  test('使用默认连接参数解析完整 PostgreSQL 配置', () => {
     expect(loadServerConfig({
       DATABASE_NAME: 'socilab',
       DATABASE_PASSWORD: 'database-secret',
@@ -91,7 +91,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('拒绝不完整或非法的 PostgreSQL 配置', () => {
+  test('拒绝不完整或非法的 PostgreSQL 配置', () => {
     expect(() => loadServerConfig({ DATABASE_USER: 'socilab' })).toThrow()
     expect(() => loadServerConfig({
       DATABASE_NAME: 'socilab',
@@ -101,7 +101,7 @@ describe('server environment config', () => {
     })).toThrow()
   })
 
-  it('只用 Redis 配置描述共享服务连接，不接受业务 DB 分配', () => {
+  test('只用 Redis 配置描述共享服务连接，不接受业务 DB 分配', () => {
     expect(loadServerConfig({
       REDIS_HOST: ' redis.internal ',
       REDIS_PASSWORD: 'redis-secret',
@@ -117,7 +117,7 @@ describe('server environment config', () => {
     expect(loadServerConfig({ REDIS_DB: '15' }).redis).toBeUndefined()
   })
 
-  it('解析阿里云 OSS 双存储桶配置', () => {
+  test('解析阿里云 OSS 双存储桶配置', () => {
     expect(loadServerConfig({
       OSS_ACCESS_KEY_ID: 'oss-access-key',
       OSS_ACCESS_KEY_SECRET: 'oss-secret-key',
@@ -137,7 +137,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('拒绝不完整或非法的 OSS 配置', () => {
+  test('拒绝不完整或非法的 OSS 配置', () => {
     expect(() => loadServerConfig({ OSS_REGION: 'oss-cn-hangzhou' })).toThrow()
     expect(() => loadServerConfig({
       OSS_ACCESS_KEY_ID: 'oss-access-key',
@@ -149,7 +149,7 @@ describe('server environment config', () => {
     })).toThrow()
   })
 
-  it('解析阿里云短信配置', () => {
+  test('解析阿里云短信配置', () => {
     expect(loadServerConfig({
       SMS_ACCESS_KEY_ID: 'sms-access-key',
       SMS_ACCESS_KEY_SECRET: 'sms-secret-key',
@@ -164,11 +164,11 @@ describe('server environment config', () => {
     })
   })
 
-  it('拒绝不完整的短信配置', () => {
+  test('拒绝不完整的短信配置', () => {
     expect(() => loadServerConfig({ SMS_SIGN_NAME: 'SociLab' })).toThrow()
   })
 
-  it('解析飞书邮箱 SMTP 配置', () => {
+  test('解析飞书邮箱 SMTP 配置', () => {
     expect(loadServerConfig({
       EMAIL_HOST: 'smtp.example.test',
       EMAIL_PASSWORD: 'smtp-client-password',
@@ -185,7 +185,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('拒绝不完整或非法的邮件配置', () => {
+  test('拒绝不完整或非法的邮件配置', () => {
     expect(() => loadServerConfig({ EMAIL_USER: 'noreply@example.test' })).toThrow()
     expect(() => loadServerConfig({
       EMAIL_HOST: 'smtp.example.test',
@@ -195,7 +195,7 @@ describe('server environment config', () => {
     })).toThrow()
   })
 
-  it('解析并规范化 Cap 服务地址', () => {
+  test('解析并规范化 Cap 服务地址', () => {
     expect(loadServerConfig({
       CAPTCHA_CLIENT_ENDPOINT: 'https://captcha.example.test/',
       CAPTCHA_SECRET_KEY: 'captcha-secret',
@@ -209,7 +209,7 @@ describe('server environment config', () => {
     })
   })
 
-  it('拒绝不完整或非 HTTP 协议的 Cap 配置', () => {
+  test('拒绝不完整或非 HTTP 协议的 Cap 配置', () => {
     expect(() => loadServerConfig({ CAPTCHA_SITE_KEY: 'captcha-site' })).toThrow()
     expect(() => loadServerConfig({
       CAPTCHA_CLIENT_ENDPOINT: 'file:///captcha',

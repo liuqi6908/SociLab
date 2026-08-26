@@ -1,8 +1,8 @@
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import { parseTypeScriptSources } from './source'
 
 /** -------------------- 测试 -------------------- */
-it('通过 TypeScript 7 异步 Program 解析虚拟源码', async () => {
+test('通过 TypeScript 7 异步 Program 解析虚拟源码', async () => {
   const parsing = parseTypeScriptSources([
     {
       filePath: 'packages/example/src/index.ts',

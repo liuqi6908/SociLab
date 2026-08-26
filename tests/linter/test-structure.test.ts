@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   assertTestStructure,
   formatTestStructureDiagnostics,
@@ -10,7 +10,7 @@ import {
 const templateDomainInterpolation = '${' + 'domain}'
 
 /** -------------------- 测试 -------------------- */
-it('捕获 tests 根目录和生产源码目录中的测试文件', async () => {
+test('捕获 tests 根目录和生产源码目录中的测试文件', async () => {
   expect(await readTestStructureDiagnostics([
     { filePath: 'tests/orphan.test.ts', source: 'test()\n' },
     { filePath: 'projects/client/src/orphan.test.ts', source: 'test()\n' },
@@ -20,7 +20,7 @@ it('捕获 tests 根目录和生产源码目录中的测试文件', async () => 
   ])
 })
 
-it('捕获超过 2000 行的测试文件与跨领域相对导入', async () => {
+test('捕获超过 2000 行的测试文件与跨领域相对导入', async () => {
   const diagnostics = await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/large.test.ts',
@@ -50,7 +50,7 @@ it('捕获超过 2000 行的测试文件与跨领域相对导入', async () => {
   ])
 })
 
-it('捕获动态、类型、import equals 与 CommonJS 跨领域导入', async () => {
+test('捕获动态、类型、import equals 与 CommonJS 跨领域导入', async () => {
   const diagnostics = await readTestStructureDiagnostics([{
     filePath: 'tests/client/module-forms.test.ts',
     source: [
@@ -71,7 +71,7 @@ it('捕获动态、类型、import equals 与 CommonJS 跨领域导入', async (
   ))).toEqual(['protocol', 'request', 'server', 'shared'])
 })
 
-it('捕获无替换模板动态导入且不猜测表达式模板', async () => {
+test('捕获无替换模板动态导入且不猜测表达式模板', async () => {
   const diagnostics = await readTestStructureDiagnostics([{
     filePath: 'tests/client/template-module-forms.test.ts',
     source: [
@@ -95,7 +95,7 @@ it('捕获无替换模板动态导入且不猜测表达式模板', async () => {
   ))).toEqual(['protocol', 'shared'])
 })
 
-it('接受 2000 行测试与同领域、support 和生产源码相对导入', async () => {
+test('接受 2000 行测试与同领域、support 和生产源码相对导入', async () => {
   expect(await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/limit.test.ts',
@@ -128,7 +128,7 @@ it('接受 2000 行测试与同领域、support 和生产源码相对导入', as
   ])).toEqual([])
 })
 
-it('按文本行语义统计以换行结尾的 2000/2001 行测试', async () => {
+test('按文本行语义统计以换行结尾的 2000/2001 行测试', async () => {
   expect(await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/trailing-valid.test.ts',
@@ -147,7 +147,7 @@ it('按文本行语义统计以换行结尾的 2000/2001 行测试', async () =>
   ])
 })
 
-it('格式化并断言测试结构诊断', async () => {
+test('格式化并断言测试结构诊断', async () => {
   const diagnostics = await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/cross-domain.test.ts',

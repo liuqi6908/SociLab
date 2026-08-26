@@ -6,6 +6,9 @@
     "eslint.config.mjs",
     "vitest.config.ts"
   ],
+  "futureFlags": {
+    "watchUsingTaskInputs": true
+  },
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -31,17 +34,31 @@
       "cache": false,
       "persistent": true
     },
-    "lint": {
-      "dependsOn": ["^lint"],
+    "//#lint:repo": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "packages/**",
+        "projects/**",
+        "tests/**",
+        "!packages/**/dist/**",
+        "!projects/**/dist/**"
+      ],
       "outputs": [".eslintcache"]
     },
-    "typecheck": {
-      "dependsOn": ["^typecheck"],
-      "outputs": []
+    "//#typecheck:repo": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "packages/**",
+        "projects/**",
+        "tests/**",
+        "!packages/**/dist/**",
+        "!projects/**/dist/**"
+      ]
     },
-    "test": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"],
+    "//#test:linter:repo": {
+      "cache": false
+    },
+    "//#test:repo": {
       "cache": false
     }
   }

@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readParameterPropertyOrderDiagnostics } from './parameter-properties'
 
 /** -------------------- 测试 -------------------- */
 describe('参数属性顺序守卫', () => {
-  it('报告散落在运行时语句后的同名参数属性声明', async () => {
+  test('报告散落在运行时语句后的同名参数属性声明', async () => {
     const diagnostics = await readParameterPropertyOrderDiagnostics([
       {
         filePath: 'fixtures/invalid.ts',
@@ -33,7 +33,7 @@ describe('参数属性顺序守卫', () => {
     ])
   })
 
-  it('接受首部连续声明以及收窄后的局部属性读取', async () => {
+  test('接受首部连续声明以及收窄后的局部属性读取', async () => {
     expect(await readParameterPropertyOrderDiagnostics([{
       filePath: 'fixtures/valid.ts',
       source: [
@@ -92,7 +92,7 @@ describe('参数属性顺序守卫', () => {
     }])).toEqual([])
   })
 
-  it('按 declarator 顺序在运行时初始化后报告同语句参数属性', async () => {
+  test('按 declarator 顺序在运行时初始化后报告同语句参数属性', async () => {
     const diagnostics = await readParameterPropertyOrderDiagnostics([
       {
         filePath: 'fixtures/mixed-declarators-invalid.ts',
@@ -118,7 +118,7 @@ describe('参数属性顺序守卫', () => {
     ])
   })
 
-  it('检查全部函数实现形态与 contextual 参数', async () => {
+  test('检查全部函数实现形态与 contextual 参数', async () => {
     const diagnostics = await readParameterPropertyOrderDiagnostics([
       {
         filePath: 'fixtures/function-kinds-invalid.ts',
@@ -178,7 +178,7 @@ describe('参数属性顺序守卫', () => {
     ])
   })
 
-  it('报告 unknown、any 与 nullable 参数未经收窄的属性读取', async () => {
+  test('报告 unknown、any 与 nullable 参数未经收窄的属性读取', async () => {
     const diagnostics = await readParameterPropertyOrderDiagnostics([
       {
         filePath: 'fixtures/semantic-narrowing-invalid.ts',
@@ -213,7 +213,7 @@ describe('参数属性顺序守卫', () => {
     ])
   })
 
-  it('支持物理不存在目录中的跨文件相对类型导入', async () => {
+  test('支持物理不存在目录中的跨文件相对类型导入', async () => {
     const diagnostics = await readParameterPropertyOrderDiagnostics([
       {
         filePath: 'fixtures/shared/input.ts',

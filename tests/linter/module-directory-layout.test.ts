@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { formatModuleDirectoryLayoutDiagnostics, readModuleDirectoryLayoutDiagnostics } from './module-directory-layout'
 
 /** -------------------- 测试 -------------------- */
 describe('模块目录布局守卫', () => {
-  it('区分应拍平的单文件子目录与缺少并列职责的多文件子目录', () => {
+  test('区分应拍平的单文件子目录与缺少并列职责的多文件子目录', () => {
     const diagnostics = readModuleDirectoryLayoutDiagnostics([
       { filePath: 'packages/compact/src/index.ts', source: '' },
       { filePath: 'packages/compact/src/tool/index.tsx', source: '' },
@@ -30,7 +30,7 @@ describe('模块目录布局守卫', () => {
     expect(formatModuleDirectoryLayoutDiagnostics(diagnostics)).toContain('第二个并列模块')
   })
 
-  it('接受拍平、多并列模块、唯一 meta 模块骨架与 TanStack routes', () => {
+  test('接受拍平、多并列模块、唯一 meta 模块骨架与 TanStack routes', () => {
     expect(readModuleDirectoryLayoutDiagnostics([
       { filePath: 'packages/example/src/index.ts', source: '' },
       { filePath: 'packages/example/src/tool.tsx', source: '' },

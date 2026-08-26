@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import { readRepositoryGuardInputs, runCachedRepositoryGuards } from './cache'
 
 /** -------------------- 测试工具 -------------------- */
@@ -18,7 +18,7 @@ function writeRepositoryFiles(root: string, files: Readonly<Record<string, strin
 }
 
 /** -------------------- 测试 -------------------- */
-it('缓存输入覆盖源码、两端构建路由、共享样式与工程配置并排除生成目录', () => {
+test('缓存输入覆盖源码、两端构建路由、共享样式与工程配置并排除生成目录', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-inputs-'))
 
   try {
@@ -83,7 +83,7 @@ it('缓存输入覆盖源码、两端构建路由、共享样式与工程配置�
   }
 })
 
-it('缓存首次运行后命中相同输入', async () => {
+test('缓存首次运行后命中相同输入', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-'))
   let runCount = 0
 
@@ -106,7 +106,7 @@ it('缓存首次运行后命中相同输入', async () => {
   }
 })
 
-it('缓存会因源码与受控输入变化失效且不依赖 mtime 变化', async () => {
+test('缓存会因源码与受控输入变化失效且不依赖 mtime 变化', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-invalidation-'))
   const sourcePath = path.join(root, 'packages/example/src/index.ts')
   let runCount = 0
@@ -141,7 +141,7 @@ it('缓存会因源码与受控输入变化失效且不依赖 mtime 变化', asy
   }
 })
 
-it('失败的全仓守卫不会写入成功缓存', async () => {
+test('失败的全仓守卫不会写入成功缓存', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-failure-'))
   let runCount = 0
 
@@ -165,7 +165,7 @@ it('失败的全仓守卫不会写入成功缓存', async () => {
   }
 })
 
-it('并发命中同一输入时只执行一次并清理锁目录', async () => {
+test('并发命中同一输入时只执行一次并清理锁目录', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-concurrent-'))
   let resolveRun!: () => void
   let runCount = 0
@@ -204,7 +204,7 @@ it('并发命中同一输入时只执行一次并清理锁目录', async () => {
   }
 })
 
-it('等待缓存锁超时后抛出可操作错误', async () => {
+test('等待缓存锁超时后抛出可操作错误', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'socilab-guard-cache-timeout-'))
   const lockDir = path.join(root, '.cache/tests/linter/guard.json.lock')
   let runCount = 0

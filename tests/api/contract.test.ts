@@ -1,15 +1,66 @@
+import type { ApiHandlers, MetaApiHandlers } from '@socilab/api'
 import { isContractProcedure } from '@orpc/contract'
 import { OpenAPIGenerator } from '@orpc/openapi'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
-import { API_BASE_PATH, API_RPC_PATH, apiContract, ApiError, emptyInputSchema, metaInfoSchema } from '@socilab/api'
-import { describe, expect, it } from 'vitest'
+import {
+  API_BASE_PATH,
+  API_RPC_PATH,
+  apiContract,
+  ApiError,
+  apiErrorDataSchema,
+  apiErrors,
+  emptyInputSchema,
+  metaInfoSchema,
+} from '@socilab/api'
+import { describe, expect, test } from 'vitest'
 
 describe('api contract', () => {
-  it('仅公开 meta.info procedure', () => {
+  test('所有 procedure 共享标准错误数据 Schema', () => {
+    expect(Object.keys(apiErrors).sort()).toEqual([
+      'BAD_REQUEST',
+      'CLIENT_CLOSED_REQUEST',
+      'CONFLICT',
+      'FORBIDDEN',
+      'INTERNAL_SERVER_ERROR',
+      'NOT_FOUND',
+      'NOT_IMPLEMENTED',
+      'PAYLOAD_TOO_LARGE',
+      'PRECONDITION_FAILED',
+      'SERVICE_UNAVAILABLE',
+      'TIMEOUT',
+      'TOO_MANY_REQUESTS',
+      'UNAUTHORIZED',
+      'UNPROCESSABLE_CONTENT',
+    ])
+    expect(apiErrorDataSchema.parse({
+      businessCode: 'META_CONFLICT',
+      details: { field: 'version' },
+      issues: [{ code: 'validation', message: '无效值', path: 'version' }],
+    })).toEqual({
+      businessCode: 'META_CONFLICT',
+      details: { field: 'version' },
+      issues: [{ code: 'validation', message: '无效值', path: 'version' }],
+    })
+  })
+
+  test('meta handler 使用传输无关的中断上下文', async () => {
+    const signal = new AbortController().signal
+    const meta: MetaApiHandlers = {
+      info: () => ({ name: 'SociLab', version: '0.1.0' }),
+    }
+    const handlers: ApiHandlers = { meta }
+
+    await expect(Promise.resolve(handlers.meta.info({ signal }))).resolves.toEqual({
+      name: 'SociLab',
+      version: '0.1.0',
+    })
+  })
+
+  test('仅公开 meta.info procedure', () => {
     expect(listProcedures(apiContract)).toEqual(['meta.info'])
   })
 
-  it('rejects an invalid service version while exposing the same OpenAPI output shape', async () => {
+  test('rejects an invalid service version while exposing the same OpenAPI output shape', async () => {
     expect(metaInfoSchema.safeParse({ name: 'SociLab', version: '0.1.1' }).success).toBe(false)
     expect(metaInfoSchema.parse({ name: 'SociLab', version: '0.1.0' })).toEqual({
       name: 'SociLab',
@@ -27,7 +78,7 @@ describe('api contract', () => {
     expect(API_RPC_PATH).toBe('/api/rpc')
   })
 
-  it('emits SociLab name and version literals in the OpenAPI response schema', async () => {
+  test('emits SociLab name and version literals in the OpenAPI response schema', async () => {
     const document = await new OpenAPIGenerator({
       schemaConverters: [new ZodToJsonSchemaConverter()],
     }).generate(apiContract, {
@@ -50,7 +101,7 @@ describe('api contract', () => {
     })
   })
 
-  it('仅为 meta.info 暴露 OpenAPI GET 方法', async () => {
+  test('仅为 meta.info 暴露 OpenAPI GET 方法', async () => {
     const document = await new OpenAPIGenerator({
       schemaConverters: [new ZodToJsonSchemaConverter()],
     }).generate(apiContract, {
@@ -61,7 +112,7 @@ describe('api contract', () => {
     expect(methods).toEqual(['GET /meta/info'])
   })
 
-  it('方法扫描覆盖全部 OpenAPI 标准操作键并忽略 Path Item 元数据', () => {
+  test('方法扫描覆盖全部 OpenAPI 标准操作键并忽略 Path Item 元数据', () => {
     const paths = {
       '/fixture': {
         get: {},
@@ -88,7 +139,7 @@ describe('api contract', () => {
     ])
   })
 
-  it('rejects undeclared meta.info input fields in runtime and OpenAPI contracts', async () => {
+  test('rejects undeclared meta.info input fields in runtime and OpenAPI contracts', async () => {
     expect(emptyInputSchema.safeParse({ unexpected: true }).success).toBe(false)
 
     const converter = new ZodToJsonSchemaConverter()
@@ -108,7 +159,7 @@ describe('api contract', () => {
     expect(operation?.requestBody).toBeUndefined()
   })
 
-  it('preserves status and structured details across HTTP boundaries', () => {
+  test('preserves status and structured details across HTTP boundaries', () => {
     const error = new ApiError(409, '名称已存在', {
       code: 'NAME_CONFLICT',
       details: { field: 'name' },

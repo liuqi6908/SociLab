@@ -76,6 +76,7 @@ const effectHookNames = new Set([
   'useUnmount',
 ])
 const reactHookSourceRoots = [
+  'packages/sdk/src/react',
   'packages/shared-ui/src',
   'projects/admin/src',
   'projects/client/src',

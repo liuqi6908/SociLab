@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { ESLint } from 'eslint'
-import { expect, it } from 'vitest'
+import { expect, test } from 'vitest'
 import { readReactHookOrderDiagnostics, readReactHookSources } from './react-hooks'
 
 /** -------------------- 常量 -------------------- */
@@ -10,7 +10,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 const rulesOfHooksId = 'react-hooks/rules-of-hooks'
 
 /** -------------------- 测试 -------------------- */
-it('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆序', async () => {
+test('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆序', async () => {
   const diagnostics = await readReactHookOrderDiagnostics([
     {
       filePath: 'hook-general-invalid.tsx',
@@ -58,7 +58,7 @@ it('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆�
   ])
 })
 
-it('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 Effect 顺序', async () => {
+test('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 Effect 顺序', async () => {
   expect(await readReactHookOrderDiagnostics([
     {
       filePath: 'hook-general-valid.tsx',
@@ -79,7 +79,7 @@ it('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 
   ])).toEqual([])
 })
 
-it('hook 顺序检查器按源码位置排列同一声明项并保持最高阶段', async () => {
+test('hook 顺序检查器按源码位置排列同一声明项并保持最高阶段', async () => {
   const diagnostics = await readReactHookOrderDiagnostics([
     {
       filePath: 'hook-order-edge.tsx',
@@ -121,32 +121,27 @@ it('hook 顺序检查器按源码位置排列同一声明项并保持最高阶�
   ])
 })
 
-it('react Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
+test('react Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
   expect(readReactHookSources().map(item => item.filePath)).toEqual([
+    'packages/sdk/src/react/context.ts',
+    'packages/sdk/src/react/hooks.ts',
+    'packages/sdk/src/react/index.tsx',
     'packages/shared-ui/src/components/logo/index.tsx',
     'packages/shared-ui/src/components/logo/props.ts',
     'packages/shared-ui/src/utils/cn.ts',
     'packages/shared-ui/src/utils/index.ts',
-    'projects/admin/src/app/index.tsx',
     'projects/admin/src/main.tsx',
-    'projects/admin/src/providers/query/context.ts',
-    'projects/admin/src/providers/query/hooks.ts',
-    'projects/admin/src/providers/query/index.tsx',
     'projects/admin/src/router/index.tsx',
     'projects/admin/src/routes/__root.tsx',
     'projects/admin/src/routes/index.tsx',
-    'projects/client/src/app/index.tsx',
     'projects/client/src/main.tsx',
-    'projects/client/src/providers/query/context.ts',
-    'projects/client/src/providers/query/hooks.ts',
-    'projects/client/src/providers/query/index.tsx',
     'projects/client/src/router/index.tsx',
     'projects/client/src/routes/__root.tsx',
     'projects/client/src/routes/index.tsx',
   ])
 })
 
-it('react Hook 源码由官方 rules-of-hooks 全仓检查且不存在漏检', async () => {
+test('react Hook 源码由官方 rules-of-hooks 全仓检查且不存在漏检', async () => {
   const eslint = new ESLint({
     allowInlineConfig: false,
     cache: false,

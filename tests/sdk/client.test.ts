@@ -5,11 +5,33 @@ import { API_RPC_PATH, apiContract } from '@socilab/api'
 import { Client } from '@socilab/sdk'
 import { createApiQueryUtils } from '@socilab/sdk/query'
 import { Hono } from 'hono'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createApp } from '../../projects/server/src/app/define'
 
 describe('sdk client', () => {
-  it('calls the typed service-info contract through an in-memory Hono oRPC boundary', async () => {
+  test('并发 procedure 通过同一个原生 batch 请求执行', async () => {
+    const app = createApp()
+    const requestUrls: string[] = []
+    const fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init)
+
+      requestUrls.push(request.url)
+      return Promise.resolve(app.fetch(request))
+    })
+    const client = Client.create({ baseUrl: 'https://sdk.example.test', fetch })
+
+    await expect(Promise.all([
+      client.rpc.meta.info(),
+      client.rpc.meta.info(),
+    ])).resolves.toEqual([
+      { name: 'SociLab', version: '0.1.0' },
+      { name: 'SociLab', version: '0.1.0' },
+    ])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(requestUrls[0]).toContain('/__batch__')
+  })
+
+  test('calls the typed service-info contract through an in-memory Hono oRPC boundary', async () => {
     const implementation = implement(apiContract)
     const router = implementation.router({
       meta: {
@@ -46,21 +68,16 @@ describe('sdk client', () => {
     ])
   })
 
-  it('preserves createApp validation issues through the SDK request boundary', async () => {
+  test('preserves createApp validation issues through the SDK request boundary', async () => {
     const app = createApp()
     const client = Client.create({
       baseUrl: 'https://sdk.example.test',
       fetch: (input, init) => Promise.resolve(app.fetch(new Request(input, init))),
     })
-    const callWithUnexpectedInput = client.rpc.meta.info as (
-      input: { unexpected: boolean },
-    ) => Promise<unknown>
-
-    await expect(callWithUnexpectedInput({ unexpected: true })).rejects.toMatchObject({
-      name: 'HttpError',
+    await expect(client.rpc.meta.info({ unexpected: true } as never)).rejects.toMatchObject({
       status: 400,
       code: 'BAD_REQUEST',
-      details: {
+      data: {
         issues: [
           expect.objectContaining({
             code: expect.any(String),
@@ -69,17 +86,10 @@ describe('sdk client', () => {
           }),
         ],
       },
-      issues: [
-        expect.objectContaining({
-          code: expect.any(String),
-          message: expect.any(String),
-          path: expect.any(String),
-        }),
-      ],
     })
   })
 
-  it('isolates query keys by base URL and keeps query utility keys consistent', () => {
+  test('isolates query keys by base URL and keeps query utility keys consistent', () => {
     const first = createApiQueryUtils(Client.create({ baseUrl: 'https://first.example.test/' }))
     const second = createApiQueryUtils(Client.create({ baseUrl: 'https://second.example.test/' }))
     const firstKey = first.meta.info.queryKey()
@@ -97,7 +107,7 @@ describe('sdk client', () => {
     expect(first.meta.info.key({ type: 'query' })).toEqual(firstKey)
   })
 
-  it('forwards AbortSignal through the typed oRPC transport', async () => {
+  test('forwards AbortSignal through the typed oRPC transport', async () => {
     const controller = new AbortController()
     let receivedSignal: AbortSignal | undefined
     const client = Client.create({

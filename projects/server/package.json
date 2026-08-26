@@ -12,9 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/app/server.ts",
-    "start": "node --env-file-if-exists=.env dist/projects/server/src/app/server.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --root ../.. run tests/server"
+    "start": "node --env-file-if-exists=.env dist/projects/server/src/app/server.js"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.12",

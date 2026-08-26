@@ -1,8 +1,8 @@
 import { loadWebEnvironment } from '@socilab/shared/node'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
 describe('web environment', () => {
-  it('在没有覆盖值时返回应用默认运行配置', () => {
+  test('在没有覆盖值时返回应用默认运行配置', () => {
     expect(loadWebEnvironment({
       defaultPort: 4318,
       environment: {},
@@ -15,7 +15,7 @@ describe('web environment', () => {
     })
   })
 
-  it('只读取指定应用前缀并规范化覆盖值', () => {
+  test('只读取指定应用前缀并规范化覆盖值', () => {
     expect(loadWebEnvironment({
       defaultPort: 4318,
       environment: {
@@ -34,7 +34,7 @@ describe('web environment', () => {
     })
   })
 
-  it('拒绝范围外、非整数或非数字端口', () => {
+  test('拒绝范围外、非整数或非数字端口', () => {
     for (const port of ['0', '65536', '1.5', 'invalid']) {
       expect(() => loadWebEnvironment({
         defaultPort: 4318,
@@ -44,7 +44,7 @@ describe('web environment', () => {
     }
   })
 
-  it('拒绝不是应用 pathname 的基础路径', () => {
+  test('拒绝不是应用 pathname 的基础路径', () => {
     for (const basePath of ['https://example.test/app', '/app?debug=true', '/../admin']) {
       expect(() => loadWebEnvironment({
         defaultPort: 4318,
@@ -54,7 +54,7 @@ describe('web environment', () => {
     }
   })
 
-  it('拒绝非 HTTP 协议或包含凭据的代理地址', () => {
+  test('拒绝非 HTTP 协议或包含凭据的代理地址', () => {
     for (const apiProxyTarget of [
       'file:///server',
       'https://user:secret@api.example.test',

@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readNamedImportExportLayoutDiagnostics } from './named-import-export-layout'
 
 /** -------------------- 测试 -------------------- */
 describe('命名导入与导出布局守卫', () => {
-  it('报告应收成单行的 import 与应拆成多行的 export', async () => {
+  test('报告应收成单行的 import 与应拆成多行的 export', async () => {
     const importStatement = buildSingleLineImport(42)
     const exportStatement = buildSingleLineExport(121, 'BoundaryExport')
     const diagnostics = await readNamedImportExportLayoutDiagnostics([
@@ -36,7 +36,7 @@ describe('命名导入与导出布局守卫', () => {
     ])
   })
 
-  it('接受 120 字符单行与 121 字符多行声明', async () => {
+  test('接受 120 字符单行与 121 字符多行声明', async () => {
     const inlineBoundary = buildSingleLineImport(120, ['AlphaValue', 'BetaValue'])
     const multilineBoundary = toMultilineExport(
       buildSingleLineExport(121, 'BoundaryExport'),
@@ -53,7 +53,7 @@ describe('命名导入与导出布局守卫', () => {
     }])).toEqual([])
   })
 
-  it('按移除尾逗号后的 120 字符折叠多成员 export', async () => {
+  test('按移除尾逗号后的 120 字符折叠多成员 export', async () => {
     const exportStatement = buildSingleLineExport(
       120,
       ['alphaMember', 'betaMember', 'gammaMember', 'deltaMember'],

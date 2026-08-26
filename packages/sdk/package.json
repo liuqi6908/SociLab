@@ -4,17 +4,26 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./query": "./src/query/index.ts"
+    "./query": "./src/query/index.ts",
+    "./react": "./src/react/index.tsx"
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest --root ../.. run tests/sdk"
+  "peerDependencies": {
+    "react": ">=19.2.8"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@orpc/tanstack-query": "1.15.0",
     "@socilab/api": "workspace:*",
     "@socilab/request": "workspace:*",
-    "@socilab/shared": "workspace:*"
+    "@socilab/shared": "workspace:*",
+    "@tanstack/react-query": "^5.101.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "react": "^19.2.8"
   }
 }

@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { readPrivateMemberDiagnostics } from './private-members'
 
 /** -------------------- 测试 -------------------- */
 describe('private 成员守卫', () => {
-  it('捕获字段、方法与构造器 parameter property 的非下划线名称', async () => {
+  test('捕获字段、方法与构造器 parameter property 的非下划线名称', async () => {
     const diagnostics = await readPrivateMemberDiagnostics([
       {
         filePath: 'fixture.ts',
@@ -33,7 +33,7 @@ describe('private 成员守卫', () => {
     ])
   })
 
-  it('接受下划线 private 成员和构造器 parameter property', async () => {
+  test('接受下划线 private 成员和构造器 parameter property', async () => {
     expect(await readPrivateMemberDiagnostics([
       {
         filePath: 'fixture.ts',

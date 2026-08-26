@@ -11,6 +11,7 @@ export default defineConfig({
       '@socilab/api': source('./packages/api/src/index.ts'),
       '@socilab/request': source('./packages/request/src/index.ts'),
       '@socilab/sdk/query': source('./packages/sdk/src/query/index.ts'),
+      '@socilab/sdk/react': source('./packages/sdk/src/react/index.tsx'),
       '@socilab/sdk': source('./packages/sdk/src/index.ts'),
       '@socilab/shared/node': source('./packages/shared/src/node/index.ts'),
       '@socilab/shared': source('./packages/shared/src/index.ts'),

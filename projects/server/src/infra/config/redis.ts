@@ -18,8 +18,6 @@ export interface RedisConfig {
   user?: string
   /** Redis 密码 */
   password?: string
-  /** SociLab 业务使用的 Redis DB */
-  database: number
 }
 
 /** -------------------- 常量 -------------------- */
@@ -29,19 +27,16 @@ const redisEnvironmentKeys = [
   'REDIS_PORT',
   'REDIS_USER',
   'REDIS_PASSWORD',
-  'REDIS_DB',
 ] as const
 
 /** -------------------- Schema -------------------- */
 /** Redis 环境变量边界 */
 const redisEnvironmentSchema = z.object({
-  REDIS_DB: createIntegerEnvironmentSchema(0, 0, 15),
   REDIS_HOST: environmentStringSchema.default('localhost'),
   REDIS_PASSWORD: optionalEnvironmentSecretSchema,
   REDIS_PORT: createIntegerEnvironmentSchema(6379, 1, 65_535),
   REDIS_USER: optionalEnvironmentStringSchema,
 }).transform(environment => ({
-  database: environment.REDIS_DB,
   host: environment.REDIS_HOST,
   password: environment.REDIS_PASSWORD,
   port: environment.REDIS_PORT,

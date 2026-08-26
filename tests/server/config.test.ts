@@ -63,7 +63,7 @@ describe('server environment config', () => {
       DATABASE_USER: '',
       EMAIL_HOST: ' ',
       OSS_REGION: '',
-      REDIS_DB: ' ',
+      REDIS_HOST: ' ',
       SMS_SIGN_NAME: '',
     })
 
@@ -101,32 +101,20 @@ describe('server environment config', () => {
     })).toThrow()
   })
 
-  it('允许 SociLab 选择 Redis 的 0 到 15 号数据库', () => {
-    expect(loadServerConfig({ REDIS_DB: '0' }).redis).toEqual({
-      database: 0,
-      host: 'localhost',
-      password: undefined,
-      port: 6379,
-      user: undefined,
-    })
+  it('只用 Redis 配置描述共享服务连接，不接受业务 DB 分配', () => {
     expect(loadServerConfig({
-      REDIS_DB: '15',
       REDIS_HOST: ' redis.internal ',
       REDIS_PASSWORD: 'redis-secret',
       REDIS_PORT: '6380',
       REDIS_USER: 'socilab',
     }).redis).toEqual({
-      database: 15,
       host: 'redis.internal',
       password: 'redis-secret',
       port: 6380,
       user: 'socilab',
     })
-  })
 
-  it('拒绝 Redis 数据库范围外和非整数值', () => {
-    for (const database of ['-1', '16', '1.5', 'invalid'])
-      expect(() => loadServerConfig({ REDIS_DB: database })).toThrow()
+    expect(loadServerConfig({ REDIS_DB: '15' }).redis).toBeUndefined()
   })
 
   it('解析阿里云 OSS 双存储桶配置', () => {

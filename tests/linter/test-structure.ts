@@ -1,3 +1,4 @@
+import type * as ts from '@typescript/native/unstable/ast'
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
 import { parseTypeScriptSources, readModuleSpecifier } from './source'
@@ -27,12 +28,12 @@ export const MAX_TEST_FILE_LINES = 2_000
 /**
  * 检查测试文件规模与跨领域相对依赖
  */
-export function readTestStructureDiagnostics(
+export async function readTestStructureDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: TestStructureDiagnostic[] = []
 
-  for (const { filePath, source, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, source, sourceFile } of await parseTypeScriptSources(sources)) {
     if (/\.(?:spec|test)\.tsx?$/.test(filePath)) {
       if (!filePath.startsWith('tests/'))
         diagnostics.push({ filePath, kind: 'outside-tests' })
@@ -55,7 +56,7 @@ export function readTestStructureDiagnostics(
     const targetDomains = new Set<string>()
 
     /** 收集跨领域相对导入目标 */
-    const visit = (node: Parameters<typeof sourceFile.forEachChild>[0]) => {
+    const visit = (node: ts.Node) => {
       const moduleSpecifier = readModuleSpecifier(node)
 
       if (
@@ -113,8 +114,8 @@ export function formatTestStructureDiagnostics(
 /**
  * 断言测试文件均符合规模与领域依赖约束
  */
-export function assertTestStructure(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readTestStructureDiagnostics(sources)
+export async function assertTestStructure(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readTestStructureDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatTestStructureDiagnostics(diagnostics))

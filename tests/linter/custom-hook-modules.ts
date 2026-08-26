@@ -1,5 +1,5 @@
 import type { TypeScriptSource } from './source'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { unwrapExpression } from './ast'
 import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
@@ -20,12 +20,12 @@ export interface CustomHookModuleDiagnostic {
 /**
  * 读取 JSX 组件模块中的自定义 Hook 实现诊断
  */
-export function readCustomHookModuleDiagnostics(
+export async function readCustomHookModuleDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: CustomHookModuleDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     if (!filePath.endsWith('.tsx'))
       continue
 
@@ -89,10 +89,10 @@ export function formatCustomHookModuleDiagnostics(
 /**
  * 断言 JSX 组件模块中不存在自定义 Hook 实现
  */
-export function assertCustomHookModules(
+export async function assertCustomHookModules(
   sources: readonly TypeScriptSource[],
 ) {
-  const diagnostics = readCustomHookModuleDiagnostics(sources)
+  const diagnostics = await readCustomHookModuleDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatCustomHookModuleDiagnostics(diagnostics))

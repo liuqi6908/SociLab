@@ -3,8 +3,8 @@ import { readPrivateMemberDiagnostics } from './private-members'
 
 /** -------------------- 测试 -------------------- */
 describe('private 成员守卫', () => {
-  it('捕获字段、方法与构造器 parameter property 的非下划线名称', () => {
-    const diagnostics = readPrivateMemberDiagnostics([
+  it('捕获字段、方法与构造器 parameter property 的非下划线名称', async () => {
+    const diagnostics = await readPrivateMemberDiagnostics([
       {
         filePath: 'fixture.ts',
         source: [
@@ -33,8 +33,8 @@ describe('private 成员守卫', () => {
     ])
   })
 
-  it('接受下划线 private 成员和构造器 parameter property', () => {
-    expect(readPrivateMemberDiagnostics([
+  it('接受下划线 private 成员和构造器 parameter property', async () => {
+    expect(await readPrivateMemberDiagnostics([
       {
         filePath: 'fixture.ts',
         source: [

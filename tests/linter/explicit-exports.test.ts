@@ -3,8 +3,8 @@ import { readExplicitExportDiagnostics } from './explicit-exports'
 
 /** -------------------- 测试 -------------------- */
 describe('显式导出守卫', () => {
-  it('捕获源码 default export、星号导出与缺少命名导出的模块', () => {
-    const diagnostics = readExplicitExportDiagnostics([
+  it('捕获源码 default export、星号导出与缺少命名导出的模块', async () => {
+    const diagnostics = await readExplicitExportDiagnostics([
       {
         filePath: 'fixture.ts',
         source: [
@@ -39,8 +39,8 @@ describe('显式导出守卫', () => {
     ])
   })
 
-  it('接受命名导出以及无需导出的应用入口', () => {
-    expect(readExplicitExportDiagnostics([
+  it('接受命名导出以及无需导出的应用入口', async () => {
+    expect(await readExplicitExportDiagnostics([
       {
         filePath: 'fixture.ts',
         source: [
@@ -79,8 +79,8 @@ describe('显式导出守卫', () => {
     ])).toEqual([])
   })
 
-  it('只豁免实际应用入口路径', () => {
-    const diagnostics = readExplicitExportDiagnostics([
+  it('只豁免实际应用入口路径', async () => {
+    const diagnostics = await readExplicitExportDiagnostics([
       {
         filePath: 'packages/example/src/main.ts',
         source: 'void 0',

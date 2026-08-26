@@ -10,8 +10,8 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..')
 const rulesOfHooksId = 'react-hooks/rules-of-hooks'
 
 /** -------------------- 测试 -------------------- */
-it('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆序', () => {
-  const diagnostics = readReactHookOrderDiagnostics([
+it('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆序', async () => {
+  const diagnostics = await readReactHookOrderDiagnostics([
     {
       filePath: 'hook-general-invalid.tsx',
       source: `
@@ -58,8 +58,8 @@ it('hook 顺序检查器识别 EffectEvent、命令式屏障与包装组件逆�
   ])
 })
 
-it('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 Effect 顺序', () => {
-  expect(readReactHookOrderDiagnostics([
+it('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 Effect 顺序', async () => {
+  expect(await readReactHookOrderDiagnostics([
     {
       filePath: 'hook-general-valid.tsx',
       source: `
@@ -79,8 +79,8 @@ it('hook 顺序检查器接受 common、state、memo、事件、EffectEvent 与 
   ])).toEqual([])
 })
 
-it('hook 顺序检查器按源码位置排列同一声明项并保持最高阶段', () => {
-  const diagnostics = readReactHookOrderDiagnostics([
+it('hook 顺序检查器按源码位置排列同一声明项并保持最高阶段', async () => {
+  const diagnostics = await readReactHookOrderDiagnostics([
     {
       filePath: 'hook-order-edge.tsx',
       source: `

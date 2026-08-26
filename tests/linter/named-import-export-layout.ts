@@ -1,5 +1,5 @@
 import type { TypeScriptSource } from './source'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
@@ -27,12 +27,12 @@ export const MAX_SINGLE_LINE_IMPORT_EXPORT_LENGTH = 120
 /**
  * 检查命名导入与导出是否按单行长度换行
  */
-export function readNamedImportExportLayoutDiagnostics(
+export async function readNamedImportExportLayoutDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: NamedImportExportLayoutDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     /** 读取命名导入或导出的成员和语句类型 */
     const readNamedMembers = (node: ts.Node) => {
       if (
@@ -117,10 +117,10 @@ export function formatNamedImportExportLayoutDiagnostics(
 /**
  * 断言命名导入与导出均按单行长度换行
  */
-export function assertNamedImportExportLayout(
+export async function assertNamedImportExportLayout(
   sources: readonly TypeScriptSource[],
 ) {
-  const diagnostics = readNamedImportExportLayoutDiagnostics(sources)
+  const diagnostics = await readNamedImportExportLayoutDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatNamedImportExportLayoutDiagnostics(diagnostics))

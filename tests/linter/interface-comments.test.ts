@@ -3,8 +3,8 @@ import { readInterfaceCommentDiagnostics } from './interface-comments'
 
 /** -------------------- 测试 -------------------- */
 describe('公共 Interface JSDoc 守卫', () => {
-  it('捕获导出 Interface 声明与成员缺失的 JSDoc', () => {
-    const diagnostics = readInterfaceCommentDiagnostics([
+  it('捕获导出 Interface 声明与成员缺失的 JSDoc', async () => {
+    const diagnostics = await readInterfaceCommentDiagnostics([
       {
         filePath: 'fixture.ts',
         source: [
@@ -32,8 +32,8 @@ describe('公共 Interface JSDoc 守卫', () => {
     ])
   })
 
-  it('接受完整公共 JSDoc 且不要求内部 Interface', () => {
-    expect(readInterfaceCommentDiagnostics([
+  it('接受完整公共 JSDoc 且不要求内部 Interface', async () => {
+    expect(await readInterfaceCommentDiagnostics([
       {
         filePath: 'fixture.ts',
         source: [
@@ -53,8 +53,8 @@ describe('公共 Interface JSDoc 守卫', () => {
     ])).toEqual([])
   })
 
-  it('检查本文件命名导出和别名导出的本地 Interface', () => {
-    const diagnostics = readInterfaceCommentDiagnostics([
+  it('检查本文件命名导出和别名导出的本地 Interface', async () => {
+    const diagnostics = await readInterfaceCommentDiagnostics([
       {
         filePath: 'indirect-invalid.ts',
         source: [
@@ -77,7 +77,7 @@ describe('公共 Interface JSDoc 守卫', () => {
       'AliasInput:interface',
       'AliasInput:count',
     ])
-    expect(readInterfaceCommentDiagnostics([
+    expect(await readInterfaceCommentDiagnostics([
       {
         filePath: 'indirect-valid.ts',
         source: [

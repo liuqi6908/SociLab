@@ -1,7 +1,7 @@
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import {
   parseTypeScriptSources,
   positionOf,
@@ -62,12 +62,12 @@ const rootConfigNames = new Set([
 
 /** -------------------- 源码扫描 -------------------- */
 /** 通过 TypeScript AST 扫描源码 import、标识符和产品字面量 */
-export function readSourceResidualDiagnostics(
+export async function readSourceResidualDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ResidualDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     const visit = (node: ts.Node) => {
       const moduleSpecifier = readModuleSpecifier(node)
 
@@ -90,7 +90,7 @@ export function readSourceResidualDiagnostics(
       }
 
       if (
-        ts.isStringLiteralLike(node)
+        (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
         && /\b(?:QiyanAgent|QiyanSoft)\b/.test(node.text)
       ) {
         diagnostics.push({
@@ -204,12 +204,20 @@ export function readManifestResidualDiagnostics(
 
 /** -------------------- 全仓 Gate -------------------- */
 /** 扫描真实仓库生产源码、配置和全部依赖声明 */
-export function scanRepositoryResiduals(root = repositoryRoot) {
+export async function scanRepositoryResiduals(root = repositoryRoot) {
   const files = readRepositoryResidualFiles(root)
+  const typeScriptSources = files.filter(file => isTypeScriptSource(file.filePath))
+  const textSources = files.filter(file => !isTypeScriptSource(file.filePath))
+  const batchedDiagnostics = [
+    ...await readSourceResidualDiagnostics(typeScriptSources),
+    ...readTextResidualDiagnostics(textSources),
+  ]
+  const diagnosticsByFilePath = Map.groupBy(
+    batchedDiagnostics,
+    diagnostic => diagnostic.filePath,
+  )
   const sourceDiagnostics = files.flatMap(file => (
-    isTypeScriptSource(file.filePath)
-      ? readSourceResidualDiagnostics([file])
-      : readTextResidualDiagnostics([file])
+    diagnosticsByFilePath.get(file.filePath) ?? []
   ))
   const manifestDiagnostics = readRepositoryManifestPaths(root).flatMap(filePath => (
     readManifestResidualDiagnostics(

@@ -4,7 +4,7 @@
  * 本守卫不涉及响应式依赖、回调更新或 SSR/浏览器生命周期，失败统一返回布局诊断
  */
 import type { TypeScriptSource } from './source'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
@@ -28,12 +28,12 @@ export const MAX_SINGLE_LINE_JSX_RETURN_LENGTH = 120
 /**
  * 检查可在一行内表达的 JSX return 是否存在多余括号换行
  */
-export function readJsxReturnLayoutDiagnostics(
+export async function readJsxReturnLayoutDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: JsxReturnLayoutDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     if (!filePath.endsWith('.tsx'))
       continue
 
@@ -82,8 +82,8 @@ export function readJsxReturnLayoutDiagnostics(
 /**
  * 断言短 JSX return 没有多余括号换行
  */
-export function assertJsxReturnLayout(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readJsxReturnLayoutDiagnostics(sources)
+export async function assertJsxReturnLayout(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readJsxReturnLayoutDiagnostics(sources)
 
   if (diagnostics.length === 0)
     return

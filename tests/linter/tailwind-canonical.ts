@@ -1,8 +1,8 @@
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import * as ts from '@typescript/native/unstable/ast'
 import { __unstable__loadDesignSystem } from 'tailwindcss'
-import * as ts from 'typescript'
 import { parseTypeScriptSources, repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './source'
 
 /** -------------------- 类型 -------------------- */
@@ -90,7 +90,7 @@ export async function readTailwindCanonicalDiagnostics(
   const diagnostics: TailwindCanonicalDiagnostic[] = []
   const designSystem = await loadTailwindDesignSystem()
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     /** 通过真实 Design System 生成 canonical utility */
     const canonical = (className: string) => {
       const [suggestion] = designSystem.canonicalizeCandidates(
@@ -136,7 +136,7 @@ export async function readTailwindCssConflictDiagnostics(
   const diagnostics: TailwindCssConflictDiagnostic[] = []
   const designSystem = await loadTailwindDesignSystem()
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     /** 收集单个静态 class 列表中的 CSS 属性冲突 */
     const inspect = (
       node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral,

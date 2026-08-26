@@ -1,5 +1,5 @@
 import type { TypeScriptSource } from './source'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
@@ -19,12 +19,12 @@ export interface PrivateMemberDiagnostic {
 /**
  * 检查显式 private 成员及构造器参数属性的下划线前缀
  */
-export function readPrivateMemberDiagnostics(
+export async function readPrivateMemberDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: PrivateMemberDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     const visit = (node: ts.Node) => {
       if (
         isNamedClassMember(node)
@@ -65,8 +65,8 @@ export function formatPrivateMemberDiagnostics(
 /**
  * 断言显式 private 成员及参数属性均使用下划线前缀
  */
-export function assertPrivateMemberNaming(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readPrivateMemberDiagnostics(sources)
+export async function assertPrivateMemberNaming(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readPrivateMemberDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatPrivateMemberDiagnostics(diagnostics))
@@ -74,8 +74,11 @@ export function assertPrivateMemberNaming(sources: readonly TypeScriptSource[]) 
 
 /** -------------------- 内部函数 -------------------- */
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
-  return ts.canHaveModifiers(node)
-    && ts.getModifiers(node)?.some(modifier => modifier.kind === kind) === true
+  const modifiers = (node as ts.Node & {
+    readonly modifiers?: readonly ts.ModifierLike[]
+  }).modifiers
+
+  return modifiers?.some(modifier => modifier.kind === kind) === true
 }
 
 function isNamedClassMember(node: ts.Node): node is
@@ -86,7 +89,7 @@ function isNamedClassMember(node: ts.Node): node is
   | ts.SetAccessorDeclaration {
   return ts.isGetAccessorDeclaration(node)
     || ts.isMethodDeclaration(node)
-    || ts.isParameter(node)
+    || ts.isParameterDeclaration(node)
     || ts.isPropertyDeclaration(node)
     || ts.isSetAccessorDeclaration(node)
 }

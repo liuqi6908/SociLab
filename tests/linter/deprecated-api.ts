@@ -1,7 +1,8 @@
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
-import * as ts from 'typescript'
-import { comparePositionedDiagnostics, createVirtualTypeScriptPathHost } from './source'
+import { API } from '@typescript/native/unstable/async'
+import { createVirtualFileSystem } from '@typescript/native/unstable/fs'
+import { repositoryRoot } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 废弃 API 使用诊断 */
@@ -18,81 +19,80 @@ export interface DeprecatedApiDiagnostic {
   message: string
 }
 
-/** -------------------- 常量 -------------------- */
-/** 仓库根目录 */
-const repositoryRoot = path.resolve(import.meta.dirname, '../..')
-
 /** -------------------- 核心函数 -------------------- */
 /**
  * 通过 TypeScript Language Service 检查源码中的废弃 API 使用
  */
-export function readDeprecatedApiDiagnostics(
+export async function readDeprecatedApiDiagnostics(
   sources: readonly TypeScriptSource[],
   root = repositoryRoot,
 ) {
-  const virtualHost = createVirtualTypeScriptPathHost(sources, root)
-  const { sourceByFileName } = virtualHost
+  const sourceByFileName = new Map(sources.map(item => [
+    path.resolve(root, item.filePath),
+    item,
+  ]))
   const fileNames = [...sourceByFileName.keys()]
-  const configPath = ts.findConfigFile(root, ts.sys.fileExists)
-  const config = configPath
-    ? ts.readConfigFile(configPath, ts.sys.readFile).config as unknown
-    : {}
-  const compilerOptions = ts.parseJsonConfigFileContent(
-    config,
-    ts.sys,
-    configPath ? path.dirname(configPath) : root,
-  ).options
-  const host: ts.LanguageServiceHost = {
-    directoryExists: virtualHost.directoryExists,
-    fileExists: virtualHost.fileExists,
-    getCompilationSettings: () => compilerOptions,
-    getCurrentDirectory: () => root,
-    getDefaultLibFileName: options => ts.getDefaultLibFilePath(options),
-    getDirectories: virtualHost.getDirectories,
-    getScriptFileNames: () => fileNames,
-    getScriptSnapshot: (fileName) => {
-      const source = virtualHost.readFile(fileName)
-
-      return source === undefined ? undefined : ts.ScriptSnapshot.fromString(source)
-    },
-    getScriptVersion: () => '0',
-    readDirectory: ts.sys.readDirectory,
-    readFile: virtualHost.readFile,
-    realpath: ts.sys.realpath,
-    useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames,
-  }
-  const service = ts.createLanguageService(host)
+  const api = new API({
+    cwd: root,
+    fs: createVirtualFileSystem(Object.fromEntries(
+      [...sourceByFileName].map(([fileName, item]) => [fileName, item.source]),
+    )),
+  })
   const diagnostics: DeprecatedApiDiagnostic[] = []
+  let snapshot: Awaited<ReturnType<API['updateSnapshot']>> | undefined
 
   try {
-    for (const fileName of fileNames) {
-      const sourceFile = service.getProgram()?.getSourceFile(fileName)
+    const configPath = path.resolve(root, 'tsconfig.json')
 
-      if (!sourceFile)
+    snapshot = await api.updateSnapshot({
+      openFiles: fileNames,
+      openProjects: [configPath],
+    })
+
+    const configuredProject = snapshot.getProject(configPath)
+
+    for (const fileName of fileNames) {
+      const configuredSourceFile = await configuredProject?.program.getSourceFile(fileName)
+      const project = configuredSourceFile
+        ? configuredProject
+        : await snapshot.getDefaultProjectForFile(fileName)
+      const sourceFile = configuredSourceFile
+        ?? await project?.program.getSourceFile(fileName)
+
+      if (!sourceFile || !project)
         continue
 
-      for (const diagnostic of service.getSuggestionDiagnostics(fileName)) {
-        if (!diagnostic.reportsDeprecated || diagnostic.start === undefined)
+      for (const diagnostic of await project.program.getSuggestionDiagnostics(fileName)) {
+        // reportsDeprecated 是 LSP 的稳定语义标记，不能绑定具体诊断码
+        if (!diagnostic.reportsDeprecated)
           continue
 
-        const position = sourceFile.getLineAndCharacterOfPosition(diagnostic.start)
+        const { character, line } = sourceFile.getLineAndCharacterOfPosition(
+          diagnostic.pos,
+        )
 
         diagnostics.push({
           code: diagnostic.code,
-          column: position.character + 1,
+          column: character + 1,
           filePath: sourceByFileName.get(fileName)?.filePath
             ?? path.relative(root, fileName).split(path.sep).join('/'),
-          line: position.line + 1,
-          message: ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+          line: line + 1,
+          message: diagnostic.text,
         })
       }
     }
   }
   finally {
-    service.dispose()
+    if (snapshot)
+      await snapshot.dispose()
+    await api.close()
   }
 
-  return diagnostics.sort(comparePositionedDiagnostics)
+  return diagnostics.sort((left, right) => (
+    left.filePath.localeCompare(right.filePath)
+    || left.line - right.line
+    || left.column - right.column
+  ))
 }
 
 /**
@@ -112,8 +112,8 @@ export function formatDeprecatedApiDiagnostics(
 /**
  * 断言一组源码未使用 TypeScript 标记的废弃 API
  */
-export function assertNoDeprecatedApis(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readDeprecatedApiDiagnostics(sources)
+export async function assertNoDeprecatedApis(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readDeprecatedApiDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatDeprecatedApiDiagnostics(diagnostics))

@@ -14,8 +14,8 @@ function source(filePath: string, content: string) {
 }
 
 /** -------------------- 测试 -------------------- */
-it('className 组合检查器识别数组、模板与字符串拼接', () => {
-  const diagnostics = readClassNameCompositionDiagnostics([
+it('className 组合检查器识别数组、模板与字符串拼接', async () => {
+  const diagnostics = await readClassNameCompositionDiagnostics([
     source('invalid.tsx', `
       export function InvalidClassName({ active, color }: { active: boolean; color: string }) {
         const joined = ['flex', active && 'gap-2'].filter(Boolean).join(' ')
@@ -50,8 +50,8 @@ it('className 组合检查器识别数组、模板与字符串拼接', () => {
   ])
 })
 
-it('className 组合检查器接受静态 cn 与最近词法绑定', () => {
-  expect(readClassNameCompositionDiagnostics([
+it('className 组合检查器接受静态 cn 与最近词法绑定', async () => {
+  expect(await readClassNameCompositionDiagnostics([
     source('shadowing-valid.tsx', `
       const className = 'flex'
 
@@ -62,7 +62,7 @@ it('className 组合检查器接受静态 cn 与最近词法绑定', () => {
     `),
   ])).toEqual([])
 
-  expect(readClassNameCompositionDiagnostics([
+  expect((await readClassNameCompositionDiagnostics([
     source('shadowing-invalid.tsx', `
       const classes = 'flex'
 
@@ -72,11 +72,11 @@ it('className 组合检查器接受静态 cn 与最近词法绑定', () => {
         return <div className={classes} />
       }
     `),
-  ]).map(item => item.kind)).toEqual(['string-concatenation'])
+  ])).map(item => item.kind)).toEqual(['string-concatenation'])
 })
 
-it('className 布局检查器识别长静态类、root-only classNames 与分组失衡', () => {
-  const diagnostics = readClassNameCompositionDiagnostics([
+it('className 布局检查器识别长静态类、root-only classNames 与分组失衡', async () => {
+  const diagnostics = await readClassNameCompositionDiagnostics([
     source('layout-invalid.tsx', `
       import { EXPORTED_CLASS_NAMES } from './layout-styles'
 
@@ -122,8 +122,8 @@ it('className 布局检查器识别长静态类、root-only classNames 与分组
   expect(MAX_STATIC_CLASS_NAME_LENGTH).toBe(56)
 })
 
-it('className 绑定检查器区分参数、catch 与循环作用域遮蔽', () => {
-  expect(readClassNameCompositionDiagnostics([
+it('className 绑定检查器区分参数、catch 与循环作用域遮蔽', async () => {
+  expect(await readClassNameCompositionDiagnostics([
     source('binding-shadowing-valid.tsx', `
       const PARAM_CLASS_NAME = 'flex gap-sm'
       const localRoot = { root: 'outer-local' }
@@ -158,7 +158,7 @@ it('className 绑定检查器区分参数、catch 与循环作用域遮蔽', () 
     `),
   ])).toEqual([])
 
-  expect(readClassNameCompositionDiagnostics([
+  expect((await readClassNameCompositionDiagnostics([
     source('loop-binding-scope.tsx', `
       const FOR_CLASS_NAME = 'flex gap-sm'
       const loopInRoot = { root: 'outer-in' }
@@ -201,15 +201,15 @@ it('className 绑定检查器区分参数、catch 与循环作用域遮蔽', () 
         return <Button classNames={varRoot} />
       }
     `),
-  ]).map(item => item.kind)).toEqual([
+  ])).map(item => item.kind)).toEqual([
     'single-use-class-constant',
     'root-only-class-names',
     'root-only-class-names',
   ])
 })
 
-it('className 常量检查器按相对模块路径解析跨文件同名导出', () => {
-  const diagnostics = readClassNameCompositionDiagnostics([
+it('className 常量检查器按相对模块路径解析跨文件同名导出', async () => {
+  const diagnostics = await readClassNameCompositionDiagnostics([
     source('modules/styles-a.ts', `export const ROOT_CLASS_NAME = 'flex items-center'`),
     source('modules/styles-b.ts', `export const ROOT_CLASS_NAME = 'grid gap-sm'`),
     source('modules/consumer-a.tsx', `
@@ -240,8 +240,8 @@ it('className 常量检查器按相对模块路径解析跨文件同名导出', 
   ]])
 })
 
-it('className 常量检查器沿 named re-export 与循环引用链定位真实消费点', () => {
-  const diagnostics = readClassNameCompositionDiagnostics([
+it('className 常量检查器沿 named re-export 与循环引用链定位真实消费点', async () => {
+  const diagnostics = await readClassNameCompositionDiagnostics([
     source('modules/barrel/styles-a.ts', `
       export const ROOT_CLASS_NAME = 'flex items-center'
 

@@ -1,6 +1,6 @@
 import type { ParsedTypeScriptSource, TypeScriptSource } from './source'
 import path from 'node:path'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { unwrapExpression } from './ast'
 import { comparePositionedDiagnostics, parseTypeScriptSources, positionOf } from './source'
 
@@ -96,12 +96,12 @@ const maxStaticClassNameLength = MAX_STATIC_CLASS_NAME_LENGTH
 const maxCnSegmentLengthDifference = MAX_CN_SEGMENT_LENGTH_DIFFERENCE
 
 /** -------------------- 核心函数 -------------------- */
-function readDynamicClassNameCompositionDiagnostics(
+async function readDynamicClassNameCompositionDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ClassNameCompositionDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     const declarationsByScope = new Map<
       ts.Node,
       Map<string, ClassNameBinding[]>
@@ -114,7 +114,7 @@ function readDynamicClassNameCompositionDiagnostics(
     ) => {
       if (!ts.isIdentifier(name)) {
         for (const element of name.elements) {
-          if (!ts.isOmittedExpression(element))
+          if (!ts.isOmittedExpression(element) && element.name)
             addBinding(scope, element.name, { node: element })
         }
         return
@@ -138,7 +138,7 @@ function readDynamicClassNameCompositionDiagnostics(
           node,
         })
       }
-      else if (ts.isParameter(node)) {
+      else if (ts.isParameterDeclaration(node)) {
         const scope = readParameterScope(node)
 
         if (scope)
@@ -304,12 +304,12 @@ function readDynamicClassNameCompositionDiagnostics(
 /**
  * 检查 className 动态组合、静态布局与样式常量边界
  */
-export function readClassNameCompositionDiagnostics(
+export async function readClassNameCompositionDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   return [
-    ...readDynamicClassNameCompositionDiagnostics(sources),
-    ...readClassNameLayoutDiagnostics(sources),
+    ...await readDynamicClassNameCompositionDiagnostics(sources),
+    ...await readClassNameLayoutDiagnostics(sources),
   ].sort(comparePositionedDiagnostics)
 }
 
@@ -330,10 +330,10 @@ export function formatClassNameCompositionDiagnostics(
 /**
  * 断言 className 组合与布局符合约定
  */
-export function assertClassNameComposition(
+export async function assertClassNameComposition(
   sources: readonly TypeScriptSource[],
 ) {
-  const diagnostics = readClassNameCompositionDiagnostics(sources)
+  const diagnostics = await readClassNameCompositionDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatClassNameCompositionDiagnostics(diagnostics))
@@ -342,11 +342,11 @@ export function assertClassNameComposition(
 /**
  * 检查静态 class 布局、cn 分组、classNames 槽位与样式常量消费数
  */
-function readClassNameLayoutDiagnostics(
+async function readClassNameLayoutDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ClassNameCompositionDiagnostic[] = []
-  const parsedSources = parseTypeScriptSources(sources)
+  const parsedSources = await parseTypeScriptSources(sources)
   const declarationsBySourceFile = new Map<
     ts.SourceFile,
     Map<ts.Node, Map<string, ClassNameBinding[]>>
@@ -367,7 +367,7 @@ function readClassNameLayoutDiagnostics(
     ) => {
       if (!ts.isIdentifier(name)) {
         for (const element of name.elements) {
-          if (!ts.isOmittedExpression(element))
+          if (!ts.isOmittedExpression(element) && element.name)
             addBinding(scope, element.name, { node: element })
         }
         return
@@ -408,7 +408,7 @@ function readClassNameLayoutDiagnostics(
           constantByDeclaration.set(node, record)
         }
       }
-      else if (ts.isParameter(node)) {
+      else if (ts.isParameterDeclaration(node)) {
         const scope = readParameterScope(node)
 
         if (scope)
@@ -637,7 +637,7 @@ function createClassNameModuleResolver<
 
     for (const statement of sourceFile.statements) {
       if (ts.isVariableStatement(statement)) {
-        const isExported = ts.getModifiers(statement)?.some(modifier => (
+        const isExported = statement.modifiers?.some(modifier => (
           modifier.kind === ts.SyntaxKind.ExportKeyword
         )) === true
 
@@ -658,7 +658,7 @@ function createClassNameModuleResolver<
       }
       else if (
         ts.isImportDeclaration(statement)
-        && !statement.importClause?.isTypeOnly
+        && statement.importClause?.phaseModifier !== ts.SyntaxKind.TypeKeyword
         && statement.importClause?.namedBindings
         && ts.isNamedImports(statement.importClause.namedBindings)
         && ts.isStringLiteral(statement.moduleSpecifier)
@@ -1135,7 +1135,7 @@ function isArrayClassComposition(expression: ts.Expression) {
     const [separator] = expression.arguments
 
     return separator !== undefined
-      && ts.isStringLiteralLike(separator)
+      && ts.isStringLiteral(separator)
       && separator.text === ' '
   }
 

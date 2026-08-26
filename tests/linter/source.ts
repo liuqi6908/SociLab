@@ -1,6 +1,9 @@
+import type { SourceFile } from '@typescript/native/unstable/ast'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
+import { API } from '@typescript/native/unstable/async'
+import { createVirtualFileSystem } from '@typescript/native/unstable/fs'
 
 /** -------------------- 类型 -------------------- */
 /** 待守卫检查的 TypeScript 源码 */
@@ -11,10 +14,10 @@ export interface TypeScriptSource {
   source: string
 }
 
-/** 已解析的 TypeScript 源码 */
+/** 已由 TypeScript 7 Program 解析的源码 */
 export interface ParsedTypeScriptSource extends TypeScriptSource {
-  /** TypeScript AST */
-  sourceFile: ts.SourceFile
+  /** TypeScript 7 AST */
+  sourceFile: SourceFile
 }
 
 /** -------------------- 常量 -------------------- */
@@ -45,6 +48,11 @@ export const repositoryIgnoredDirNames: ReadonlySet<string> = new Set([
 export const repositoryIgnoredFileNames: ReadonlySet<string> = new Set([
   'routeTree.gen.ts',
 ])
+/** 同一批源码只建立一次 TypeScript 7 Program */
+const parsedSourceCache = new WeakMap<
+  readonly TypeScriptSource[],
+  Promise<readonly ParsedTypeScriptSource[]>
+>()
 /** -------------------- 核心函数 -------------------- */
 /**
  * 独立枚举指定根目录中的 TypeScript 源码
@@ -106,19 +114,22 @@ export function readTypeScriptSources(
 }
 
 /**
- * 将受控源码解析为真实 TypeScript AST
+ * 通过 TypeScript 7 异步 Program API 解析一批真实或虚拟源码
  */
-export function parseTypeScriptSources(sources: readonly TypeScriptSource[]) {
-  return sources.map((item): ParsedTypeScriptSource => ({
-    ...item,
-    sourceFile: ts.createSourceFile(
-      item.filePath,
-      item.source,
-      ts.ScriptTarget.Latest,
-      true,
-      item.filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-    ),
-  }))
+export function parseTypeScriptSources(
+  sources: readonly TypeScriptSource[],
+  root = repositoryRoot,
+) {
+  const cached = parsedSourceCache.get(sources)
+
+  if (cached)
+    return cached
+
+  const parsing = _parseTypeScriptSources(sources, root)
+
+  parsedSourceCache.set(sources, parsing)
+
+  return parsing
 }
 
 /**
@@ -128,7 +139,7 @@ export function readModuleSpecifier(node: ts.Node) {
   if (
     (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
     && node.moduleSpecifier
-    && ts.isStringLiteralLike(node.moduleSpecifier)
+    && ts.isStringLiteral(node.moduleSpecifier)
   ) {
     return { node: node.moduleSpecifier, value: node.moduleSpecifier.text }
   }
@@ -138,7 +149,7 @@ export function readModuleSpecifier(node: ts.Node) {
 
     if (
       ts.isExternalModuleReference(reference)
-      && ts.isStringLiteralLike(reference.expression)
+      && ts.isStringLiteral(reference.expression)
     ) {
       return { node: reference.expression, value: reference.expression.text }
     }
@@ -147,7 +158,7 @@ export function readModuleSpecifier(node: ts.Node) {
   if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
     const literal = node.argument.literal
 
-    if (ts.isStringLiteralLike(literal))
+    if (ts.isStringLiteral(literal))
       return { node: literal, value: literal.text }
   }
 
@@ -158,8 +169,16 @@ export function readModuleSpecifier(node: ts.Node) {
     || (ts.isIdentifier(node.expression) && node.expression.text === 'require')
   const [specifier] = node.arguments
 
-  if (isModuleCall && specifier && ts.isStringLiteralLike(specifier))
+  if (
+    isModuleCall
+    && specifier
+    && (
+      ts.isStringLiteral(specifier)
+      || ts.isNoSubstitutionTemplateLiteral(specifier)
+    )
+  ) {
     return { node: specifier, value: specifier.text }
+  }
 }
 
 /**
@@ -186,68 +205,6 @@ export function comparePositionedDiagnostics(
     || left.column - right.column
 }
 
-/**
- * 为虚拟 TypeScript 源码提供稳定的目录与文件查询边界
- */
-export function createVirtualTypeScriptPathHost(
-  sources: readonly TypeScriptSource[],
-  root: string,
-) {
-  const sourceByFileName = new Map(sources.map(item => [
-    path.resolve(root, item.filePath),
-    item,
-  ]))
-  const virtualDirectoryPaths = new Set<string>()
-
-  for (const fileName of sourceByFileName.keys()) {
-    let currentDir = path.dirname(fileName)
-
-    while (!virtualDirectoryPaths.has(currentDir)) {
-      virtualDirectoryPaths.add(currentDir)
-
-      if (currentDir === root)
-        break
-
-      const parentDir = path.dirname(currentDir)
-
-      if (parentDir === currentDir)
-        break
-
-      currentDir = parentDir
-    }
-  }
-
-  return {
-    sourceByFileName,
-    directoryExists: (directoryName: string) => (
-      virtualDirectoryPaths.has(path.resolve(directoryName))
-      || ts.sys.directoryExists(directoryName)
-    ),
-    fileExists: (fileName: string) => (
-      sourceByFileName.has(path.resolve(fileName))
-      || ts.sys.fileExists(fileName)
-    ),
-    getDirectories: (directoryName: string) => {
-      const absoluteDir = path.resolve(directoryName)
-      const virtualDirectories = [...virtualDirectoryPaths]
-        .filter(item => path.dirname(item) === absoluteDir)
-        .map(item => path.basename(item))
-      const realDirectories = ts.sys.directoryExists(directoryName)
-        ? ts.sys.getDirectories(directoryName)
-        : []
-
-      return [...new Set([
-        ...realDirectories,
-        ...virtualDirectories,
-      ])].sort((left, right) => left.localeCompare(right))
-    },
-    readFile: (fileName: string) => (
-      sourceByFileName.get(path.resolve(fileName))?.source
-      ?? ts.sys.readFile(fileName)
-    ),
-  }
-}
-
 /** -------------------- 项目路径 -------------------- */
 /**
  * 判断目录是否属于 TanStack 文件路由约定
@@ -264,6 +221,59 @@ export function isProjectModuleCollection(directoryPath: string) {
 }
 
 /** -------------------- 内部函数 -------------------- */
+/**
+ * 建立一次 TypeScript 7 快照并物化源码 AST
+ */
+async function _parseTypeScriptSources(
+  sources: readonly TypeScriptSource[],
+  root: string,
+) {
+  const sourceByFileName = new Map(sources.map(item => [
+    path.resolve(root, item.filePath),
+    item,
+  ]))
+  const fileNames = [...sourceByFileName.keys()]
+  const api = new API({
+    cwd: root,
+    fs: createVirtualFileSystem(Object.fromEntries(
+      [...sourceByFileName].map(([fileName, item]) => [fileName, item.source]),
+    )),
+  })
+  let snapshot: Awaited<ReturnType<API['updateSnapshot']>> | undefined
+
+  try {
+    const configPath = path.resolve(root, 'tsconfig.json')
+
+    snapshot = await api.updateSnapshot({
+      openFiles: fileNames,
+      openProjects: [configPath],
+    })
+
+    const configuredProject = snapshot.getProject(configPath)
+    const parsed = await Promise.all(fileNames.map(async (fileName) => {
+      const sourceFile = await configuredProject?.program.getSourceFile(fileName)
+        ?? await (
+          await snapshot!.getDefaultProjectForFile(fileName)
+        )?.program.getSourceFile(fileName)
+
+      if (!sourceFile)
+        throw new Error(`TypeScript 7 无法解析源码：${fileName}`)
+
+      return {
+        ...sourceByFileName.get(fileName)!,
+        sourceFile,
+      }
+    }))
+
+    return parsed
+  }
+  finally {
+    if (snapshot)
+      await snapshot.dispose()
+    await api.close()
+  }
+}
+
 /**
  * 统一输出 POSIX 相对路径
  */

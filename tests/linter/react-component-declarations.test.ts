@@ -2,8 +2,8 @@ import { expect, it } from 'vitest'
 import { readReactComponentDeclarationDiagnostics } from './react-component-declarations'
 
 /** -------------------- 测试 -------------------- */
-it('react 组件声明检查器识别 PascalCase 箭头组件', () => {
-  expect(readReactComponentDeclarationDiagnostics([
+it('react 组件声明检查器识别 PascalCase 箭头组件', async () => {
+  expect((await readReactComponentDeclarationDiagnostics([
     {
       filePath: 'fixture.tsx',
       source: `
@@ -21,11 +21,11 @@ it('react 组件声明检查器识别 PascalCase 箭头组件', () => {
         }
       `,
     },
-  ]).map(item => item.name)).toEqual(['ArrowComponent'])
+  ])).map(item => item.name)).toEqual(['ArrowComponent'])
 })
 
-it('react 组件声明检查器忽略返回普通值的 PascalCase 回调', () => {
-  expect(readReactComponentDeclarationDiagnostics([
+it('react 组件声明检查器忽略返回普通值的 PascalCase 回调', async () => {
+  expect(await readReactComponentDeclarationDiagnostics([
     {
       filePath: 'component-evidence-valid.tsx',
       source: `
@@ -48,8 +48,8 @@ it('react 组件声明检查器忽略返回普通值的 PascalCase 回调', () =
   ])).toEqual([])
 })
 
-it('react 组件声明检查器捕获 wrapper 与 block 箭头组件', () => {
-  expect(readReactComponentDeclarationDiagnostics([
+it('react 组件声明检查器捕获 wrapper 与 block 箭头组件', async () => {
+  expect((await readReactComponentDeclarationDiagnostics([
     {
       filePath: 'component-wrappers-invalid.tsx',
       source: `
@@ -65,7 +65,7 @@ it('react 组件声明检查器捕获 wrapper 与 block 箭头组件', () => {
         }
       `,
     },
-  ]).map(item => [item.name, item.line, item.column])).toEqual([
+  ])).map(item => [item.name, item.line, item.column])).toEqual([
     ['MemoComponent', 4, 22],
     ['ForwardedComponent', 5, 22],
     ['FactoryComponent', 8, 15],
@@ -73,8 +73,8 @@ it('react 组件声明检查器捕获 wrapper 与 block 箭头组件', () => {
   ])
 })
 
-it('react 组件声明检查器按词法绑定忽略 createElement 遮蔽', () => {
-  expect(readReactComponentDeclarationDiagnostics([
+it('react 组件声明检查器按词法绑定忽略 createElement 遮蔽', async () => {
+  expect(await readReactComponentDeclarationDiagnostics([
     {
       filePath: 'create-element-parameter-shadow-valid.tsx',
       source: `

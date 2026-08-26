@@ -1,5 +1,5 @@
 import type { TypeScriptSource } from './source'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { unwrapExpression } from './ast'
 import { parseTypeScriptSources, positionOf } from './source'
 
@@ -23,12 +23,12 @@ interface ReactOutputContext {
 }
 
 /** -------------------- 核心函数 -------------------- */
-export function readReactComponentDeclarationDiagnostics(
+export async function readReactComponentDeclarationDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ReactComponentDeclarationDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     if (!filePath.endsWith('.tsx'))
       continue
 
@@ -77,8 +77,8 @@ export function formatReactComponentDeclarationDiagnostics(
 /**
  * 断言 React 组件均使用 function 声明
  */
-export function assertReactComponentDeclarations(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readReactComponentDeclarationDiagnostics(sources)
+export async function assertReactComponentDeclarations(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readReactComponentDeclarationDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatReactComponentDeclarationDiagnostics(diagnostics))
@@ -286,7 +286,7 @@ function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
   const addBinding = (scope: ts.Node, name: ts.BindingName, declaration: ts.Node) => {
     if (!ts.isIdentifier(name)) {
       for (const element of name.elements) {
-        if (!ts.isOmittedExpression(element))
+        if (!ts.isOmittedExpression(element) && element.name)
           addBinding(scope, element.name, element)
       }
       return
@@ -335,7 +335,7 @@ function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
     if (ts.isVariableDeclaration(node)) {
       addBinding(readBindingScope(node), node.name, node)
     }
-    else if (ts.isParameter(node)) {
+    else if (ts.isParameterDeclaration(node)) {
       const scope = readParameterScope(node)
 
       if (scope)

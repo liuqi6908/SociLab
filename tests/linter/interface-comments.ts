@@ -1,5 +1,5 @@
 import type { TypeScriptSource } from './source'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { parseTypeScriptSources, positionOf } from './source'
 
 /** -------------------- 类型 -------------------- */
@@ -21,12 +21,12 @@ export interface InterfaceCommentDiagnostic {
 /**
  * 检查导出 Interface 声明和成员是否具有 JSDoc
  */
-export function readInterfaceCommentDiagnostics(
+export async function readInterfaceCommentDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: InterfaceCommentDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     const locallyExportedNames = new Set(sourceFile.statements.flatMap((statement) => {
       if (
         !ts.isExportDeclaration(statement)
@@ -98,8 +98,8 @@ export function formatInterfaceCommentDiagnostics(
 /**
  * 断言导出 Interface 及成员均具有 JSDoc
  */
-export function assertInterfaceComments(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readInterfaceCommentDiagnostics(sources)
+export async function assertInterfaceComments(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readInterfaceCommentDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatInterfaceCommentDiagnostics(diagnostics))
@@ -107,16 +107,22 @@ export function assertInterfaceComments(sources: readonly TypeScriptSource[]) {
 
 /** -------------------- 内部函数 -------------------- */
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
-  return ts.canHaveModifiers(node)
-    && ts.getModifiers(node)?.some(modifier => modifier.kind === kind) === true
+  const modifiers = (node as ts.Node & {
+    readonly modifiers?: readonly ts.ModifierLike[]
+  }).modifiers
+
+  return modifiers?.some(modifier => modifier.kind === kind) === true
 }
 
 function hasJSDoc(node: ts.Node) {
-  return ts.getJSDocCommentsAndTags(node).some(ts.isJSDoc)
+  return node.jsDoc?.some(ts.isJSDoc) ?? false
 }
 
 function readMemberName(member: ts.TypeElement, sourceFile: ts.SourceFile) {
-  return 'name' in member && member.name
+  return (
+    ts.isMethodSignatureDeclaration(member)
+    || ts.isPropertySignatureDeclaration(member)
+  )
     ? member.name.getText(sourceFile)
     : ts.SyntaxKind[member.kind]
 }

@@ -112,8 +112,8 @@ function isProductionSource(source: TypeScriptSource) {
 }
 
 /** 断言仓库中不存在旧领域与品牌残留 */
-function assertNoRepositoryResiduals(root: string) {
-  const diagnostics = scanRepositoryResiduals(root)
+async function assertNoRepositoryResiduals(root: string) {
+  const diagnostics = await scanRepositoryResiduals(root)
 
   if (diagnostics.length > 0) {
     throw new Error(diagnostics.map(item => (

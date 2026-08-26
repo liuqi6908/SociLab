@@ -10,8 +10,8 @@ import {
 const templateDomainInterpolation = '${' + 'domain}'
 
 /** -------------------- 测试 -------------------- */
-it('捕获 tests 根目录和生产源码目录中的测试文件', () => {
-  expect(readTestStructureDiagnostics([
+it('捕获 tests 根目录和生产源码目录中的测试文件', async () => {
+  expect(await readTestStructureDiagnostics([
     { filePath: 'tests/orphan.test.ts', source: 'test()\n' },
     { filePath: 'projects/client/src/orphan.test.ts', source: 'test()\n' },
   ])).toEqual([
@@ -20,8 +20,8 @@ it('捕获 tests 根目录和生产源码目录中的测试文件', () => {
   ])
 })
 
-it('捕获超过 2000 行的测试文件与跨领域相对导入', () => {
-  const diagnostics = readTestStructureDiagnostics([
+it('捕获超过 2000 行的测试文件与跨领域相对导入', async () => {
+  const diagnostics = await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/large.test.ts',
       source: Array.from({ length: MAX_TEST_FILE_LINES + 1 }).fill('test()').join('\n'),
@@ -50,8 +50,8 @@ it('捕获超过 2000 行的测试文件与跨领域相对导入', () => {
   ])
 })
 
-it('捕获动态、类型、import equals 与 CommonJS 跨领域导入', () => {
-  const diagnostics = readTestStructureDiagnostics([{
+it('捕获动态、类型、import equals 与 CommonJS 跨领域导入', async () => {
+  const diagnostics = await readTestStructureDiagnostics([{
     filePath: 'tests/client/module-forms.test.ts',
     source: [
       'import LegacyServer = require(\'../server/legacy\')',
@@ -71,8 +71,8 @@ it('捕获动态、类型、import equals 与 CommonJS 跨领域导入', () => {
   ))).toEqual(['protocol', 'request', 'server', 'shared'])
 })
 
-it('捕获无替换模板动态导入且不猜测表达式模板', () => {
-  const diagnostics = readTestStructureDiagnostics([{
+it('捕获无替换模板动态导入且不猜测表达式模板', async () => {
+  const diagnostics = await readTestStructureDiagnostics([{
     filePath: 'tests/client/template-module-forms.test.ts',
     source: [
       'const protocolModule = import(`../protocol/template`)',
@@ -95,8 +95,8 @@ it('捕获无替换模板动态导入且不猜测表达式模板', () => {
   ))).toEqual(['protocol', 'shared'])
 })
 
-it('接受 2000 行测试与同领域、support 和生产源码相对导入', () => {
-  expect(readTestStructureDiagnostics([
+it('接受 2000 行测试与同领域、support 和生产源码相对导入', async () => {
+  expect(await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/limit.test.ts',
       source: Array.from({ length: MAX_TEST_FILE_LINES }).fill('test()').join('\n'),
@@ -128,8 +128,8 @@ it('接受 2000 行测试与同领域、support 和生产源码相对导入', ()
   ])).toEqual([])
 })
 
-it('按文本行语义统计以换行结尾的 2000/2001 行测试', () => {
-  expect(readTestStructureDiagnostics([
+it('按文本行语义统计以换行结尾的 2000/2001 行测试', async () => {
+  expect(await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/trailing-valid.test.ts',
       source: 'test()\n'.repeat(MAX_TEST_FILE_LINES),
@@ -147,8 +147,8 @@ it('按文本行语义统计以换行结尾的 2000/2001 行测试', () => {
   ])
 })
 
-it('格式化并断言测试结构诊断', () => {
-  const diagnostics = readTestStructureDiagnostics([
+it('格式化并断言测试结构诊断', async () => {
+  const diagnostics = await readTestStructureDiagnostics([
     {
       filePath: 'tests/client/cross-domain.test.ts',
       source: 'import { fixture } from \'../protocol/support\'\n',
@@ -165,12 +165,10 @@ it('格式化并断言测试结构诊断', () => {
     '- tests/client/large.test.ts: 测试文件共 2001 行，超过 2000 行上限',
   ].join('\n'))
 
-  expect(() => {
-    assertTestStructure([{
-      filePath: 'tests/client/cross-domain.test.ts',
-      source: 'import { fixture } from \'../protocol/support\'\n',
-    }])
-  }).toThrow(
+  await expect(assertTestStructure([{
+    filePath: 'tests/client/cross-domain.test.ts',
+    source: 'import { fixture } from \'../protocol/support\'\n',
+  }])).rejects.toThrow(
     '测试目录结构检查失败：\n- tests/client/cross-domain.test.ts: 领域测试不得相对导入 tests/protocol，跨领域共享能力应归入 tests/support',
   )
 })

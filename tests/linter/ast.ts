@@ -1,4 +1,4 @@
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 
 /** -------------------- AST 工具函数 -------------------- */
 /**
@@ -11,7 +11,7 @@ export function unwrapExpression(expression: ts.Expression): ts.Expression {
     ts.isParenthesizedExpression(current)
     || ts.isAsExpression(current)
     || ts.isSatisfiesExpression(current)
-    || ts.isTypeAssertionExpression(current)
+    || ts.isTypeAssertion(current)
     || ts.isNonNullExpression(current)
   ) {
     current = current.expression

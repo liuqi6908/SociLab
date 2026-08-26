@@ -1,7 +1,7 @@
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { unwrapExpression } from './ast'
 import { parseTypeScriptSources, positionOf, repositoryIgnoredDirNames, repositoryIgnoredFileNames } from './source'
 
@@ -90,12 +90,12 @@ export function readReactHookSources(): TypeScriptSource[] {
     .filter(item => !item.filePath.endsWith('.d.ts'))
 }
 
-export function readReactHookOrderDiagnostics(
+export async function readReactHookOrderDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: ReactHookOrderDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     const reactOutputContext = readReactOutputContext(sourceFile)
     const inspectedBodies = new Set<ts.Block>()
     const inspect = (scope: string, body: ts.ConciseBody) => {
@@ -214,8 +214,8 @@ export function formatReactHookOrderDiagnostics(
 /**
  * 断言 React Hook 阶段顺序符合约定
  */
-export function assertReactHookOrder(sources: readonly TypeScriptSource[]) {
-  const diagnostics = readReactHookOrderDiagnostics(sources)
+export async function assertReactHookOrder(sources: readonly TypeScriptSource[]) {
+  const diagnostics = await readReactHookOrderDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatReactHookOrderDiagnostics(diagnostics))
@@ -269,8 +269,11 @@ function toPosixPath(filePath: string) {
 }
 
 function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
-  return ts.canHaveModifiers(node)
-    && ts.getModifiers(node)?.some(modifier => modifier.kind === kind) === true
+  const modifiers = (node as ts.Node & {
+    readonly modifiers?: readonly ts.ModifierLike[]
+  }).modifiers
+
+  return modifiers?.some(modifier => modifier.kind === kind) === true
 }
 
 function readLexicalScope(node: ts.Node) {
@@ -584,7 +587,7 @@ function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
   const addBinding = (scope: ts.Node, name: ts.BindingName, declaration: ts.Node) => {
     if (!ts.isIdentifier(name)) {
       for (const element of name.elements) {
-        if (!ts.isOmittedExpression(element))
+        if (!ts.isOmittedExpression(element) && element.name)
           addBinding(scope, element.name, element)
       }
       return
@@ -633,7 +636,7 @@ function readReactOutputContext(sourceFile: ts.SourceFile): ReactOutputContext {
     if (ts.isVariableDeclaration(node)) {
       addBinding(readBindingScope(node), node.name, node)
     }
-    else if (ts.isParameter(node)) {
+    else if (ts.isParameterDeclaration(node)) {
       const scope = readParameterScope(node)
 
       if (scope)

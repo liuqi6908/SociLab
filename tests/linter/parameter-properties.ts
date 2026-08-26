@@ -1,8 +1,11 @@
+import type { Checker, Type } from '@typescript/native/unstable/async'
 import type { TypeScriptSource } from './source'
 import path from 'node:path'
-import * as ts from 'typescript'
-import { unwrapExpression } from './ast'
-import { comparePositionedDiagnostics, createVirtualTypeScriptPathHost, positionOf } from './source'
+import * as ts from '@typescript/native/unstable/ast'
+import { API, TypeFlags } from '@typescript/native/unstable/async'
+import { createVirtualFileSystem } from '@typescript/native/unstable/fs'
+import { isImplementedFunction, unwrapExpression } from './ast'
+import { comparePositionedDiagnostics, positionOf, repositoryRoot } from './source'
 
 /** -------------------- 类型 -------------------- */
 /** 参数属性声明顺序诊断 */
@@ -29,27 +32,15 @@ interface ParameterPropertyDeclaration {
   parameter: string
 }
 
-/** 已由 TypeScript Program 解析并绑定 TypeChecker 的源码 */
-interface TypeCheckedSource extends TypeScriptSource {
-  /** 共享类型检查器 */
-  checker: ts.TypeChecker
-  /** Program 中的源码节点 */
-  sourceFile: ts.SourceFile
-}
-
-/** -------------------- 常量 -------------------- */
-/** 仓库根目录 */
-const repositoryRoot = path.resolve(import.meta.dirname, '../..')
-
 /** -------------------- AST 检查函数 -------------------- */
 /**
  * 读取变量声明直接使用的参数属性
  */
-function readParameterPropertyDeclaration(
+async function readParameterPropertyDeclaration(
   declaration: ts.VariableDeclaration,
   parameters: ReadonlyMap<string, ts.ParameterDeclaration>,
-  checker: ts.TypeChecker,
-): ParameterPropertyDeclaration | undefined {
+  checker: Checker,
+): Promise<ParameterPropertyDeclaration | undefined> {
   if (!declaration.initializer)
     return
 
@@ -73,13 +64,13 @@ function readParameterPropertyDeclaration(
   if (!parameter)
     return
 
-  const declaredType = checker.getTypeAtLocation(parameter.name)
-  const currentType = checker.getTypeAtLocation(source)
+  const declaredType = await checker.getTypeAtLocation(parameter.name)
+  const currentType = await checker.getTypeAtLocation(source)
 
   // 已在 guard 后收窄的读取属于窄作用域，不参与函数入口声明顺序
   if (
-    typeRequiresRuntimeNarrowing(declaredType, checker)
-    && !typeRequiresRuntimeNarrowing(currentType, checker)
+    await typeRequiresRuntimeNarrowing(declaredType, checker)
+    && !await typeRequiresRuntimeNarrowing(currentType, checker)
   ) {
     return
   }
@@ -94,36 +85,52 @@ function readParameterPropertyDeclaration(
 /**
  * 判断类型是否仍可能包含需要运行时收窄的值
  */
-function typeRequiresRuntimeNarrowing(
-  type: ts.Type,
-  checker: ts.TypeChecker,
-  visited = new Set<ts.Type>(),
-): boolean {
-  if (visited.has(type))
+async function typeRequiresRuntimeNarrowing(
+  type: Type | undefined,
+  checker: Checker,
+  visited = new Set<number>(),
+): Promise<boolean> {
+  if (!type)
+    return true
+
+  if (visited.has(type.id))
     return false
 
-  visited.add(type)
+  visited.add(type.id)
 
-  const unsafeFlags = ts.TypeFlags.Any
-    | ts.TypeFlags.Null
-    | ts.TypeFlags.Undefined
-    | ts.TypeFlags.Unknown
-    | ts.TypeFlags.Void
+  const unsafeFlags = TypeFlags.Any
+    | TypeFlags.Null
+    | TypeFlags.Undefined
+    | TypeFlags.Unknown
+    | TypeFlags.Void
 
   if (type.flags & unsafeFlags)
     return true
 
-  if (type.isUnion())
-    return type.types.some(item => typeRequiresRuntimeNarrowing(item, checker, visited))
+  if (type.isUnionType()) {
+    const types = await type.getTypes() ?? []
 
-  if (type.isIntersection()) {
-    return type.types.every(item => (
-      typeRequiresRuntimeNarrowing(item, checker, visited)
-    ))
+    for (const item of types) {
+      if (await typeRequiresRuntimeNarrowing(item, checker, visited))
+        return true
+    }
+
+    return false
   }
 
-  if (type.flags & ts.TypeFlags.TypeParameter) {
-    const constraint = checker.getBaseConstraintOfType(type)
+  if (type.isIntersectionType()) {
+    const types = await type.getTypes() ?? []
+
+    for (const item of types) {
+      if (!await typeRequiresRuntimeNarrowing(item, checker, visited))
+        return false
+    }
+
+    return true
+  }
+
+  if (type.isTypeParameter()) {
+    const constraint = await checker.getBaseConstraintOfType(type)
 
     return constraint
       ? typeRequiresRuntimeNarrowing(constraint, checker, visited)
@@ -188,177 +195,123 @@ function readFunctionScope(node: ts.FunctionLikeDeclaration) {
   return '<anonymous>'
 }
 
-/**
- * 使用 TypeScript 6 公共 Program 为受控源码建立语义模型
- */
-function parseTypeCheckedSources(
-  sources: readonly TypeScriptSource[],
-  root = repositoryRoot,
-): TypeCheckedSource[] {
-  const virtualHost = createVirtualTypeScriptPathHost(sources, root)
-  const { sourceByFileName } = virtualHost
-  const fileNames = [...sourceByFileName.keys()]
-  const configPath = ts.findConfigFile(root, ts.sys.fileExists)
-  const readConfig = configPath
-    ? ts.readConfigFile(configPath, ts.sys.readFile)
-    : undefined
-
-  if (readConfig?.error) {
-    throw new Error(ts.flattenDiagnosticMessageText(
-      readConfig.error.messageText,
-      '\n',
-    ))
-  }
-
-  const compilerOptions = configPath
-    ? ts.parseJsonConfigFileContent(
-      readConfig?.config ?? {},
-      ts.sys,
-      path.dirname(configPath),
-      undefined,
-      configPath,
-    ).options
-    : {
-        jsx: ts.JsxEmit.ReactJSX,
-        module: ts.ModuleKind.ESNext,
-        strict: true,
-        target: ts.ScriptTarget.ESNext,
-      }
-  const host = ts.createCompilerHost(compilerOptions, true)
-  const readSourceFile = host.getSourceFile.bind(host)
-
-  host.directoryExists = virtualHost.directoryExists
-  host.fileExists = virtualHost.fileExists
-  host.getDirectories = virtualHost.getDirectories
-  host.readFile = virtualHost.readFile
-  host.getSourceFile = (
-    fileName,
-    languageVersionOrOptions,
-    onError,
-    shouldCreateNewSourceFile,
-  ) => {
-    const source = virtualHost.readFile(fileName)
-
-    if (!sourceByFileName.has(path.resolve(fileName))) {
-      return readSourceFile(
-        fileName,
-        languageVersionOrOptions,
-        onError,
-        shouldCreateNewSourceFile,
-      )
-    }
-
-    return ts.createSourceFile(
-      fileName,
-      source,
-      languageVersionOrOptions,
-      true,
-      fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-    )
-  }
-
-  const program = ts.createProgram({
-    host,
-    options: compilerOptions,
-    rootNames: fileNames,
-  })
-  const checker = program.getTypeChecker()
-
-  return sources.map((item) => {
-    const sourceFile = program.getSourceFile(path.resolve(root, item.filePath))
-
-    if (!sourceFile)
-      throw new Error(`TypeScript 无法解析源码：${item.filePath}`)
-
-    return { ...item, checker, sourceFile }
-  })
-}
-
-/**
- * 判断节点是否是具有实现体的函数
- */
-function isImplementedFunction(
-  node: ts.Node,
-): node is ts.FunctionLikeDeclaration {
-  return ts.isArrowFunction(node)
-    || ts.isConstructorDeclaration(node)
-    || ts.isFunctionDeclaration(node)
-    || ts.isFunctionExpression(node)
-    || ts.isGetAccessorDeclaration(node)
-    || ts.isMethodDeclaration(node)
-    || ts.isSetAccessorDeclaration(node)
-}
-
 /** -------------------- 核心函数 -------------------- */
 /**
  * 检查源码中的参数属性局部声明是否集中在函数体开头
  */
-export function readParameterPropertyOrderDiagnostics(
+export async function readParameterPropertyOrderDiagnostics(
   sources: readonly TypeScriptSource[],
+  root = repositoryRoot,
 ) {
   const diagnostics: ParameterPropertyOrderDiagnostic[] = []
+  const sourceByFileName = new Map(sources.map(item => [
+    path.resolve(root, item.filePath),
+    item,
+  ]))
+  const fileNames = [...sourceByFileName.keys()]
+  const api = new API({
+    cwd: root,
+    fs: createVirtualFileSystem(Object.fromEntries(
+      [...sourceByFileName].map(([fileName, item]) => [fileName, item.source]),
+    )),
+  })
+  let snapshot: Awaited<ReturnType<API['updateSnapshot']>> | undefined
 
-  for (const { checker, filePath, sourceFile } of parseTypeCheckedSources(sources)) {
-    /** 检查单个函数体的首部参数属性声明区 */
-    const inspect = (node: ts.FunctionLikeDeclaration) => {
-      if (!node.body || !ts.isBlock(node.body))
-        return
+  try {
+    const configPath = path.resolve(root, 'tsconfig.json')
 
-      const parameters = new Map(node.parameters.flatMap(parameter => (
-        ts.isIdentifier(parameter.name)
-          ? [[parameter.name.text, parameter] as const]
-          : []
-      )))
-      const parameterNames = new Set(parameters.keys())
+    snapshot = await api.updateSnapshot({
+      openFiles: fileNames,
+      openProjects: [configPath],
+    })
 
-      if (parameterNames.size === 0)
-        return
+    const configuredProject = snapshot.getProject(configPath)
 
-      let leadingDeclarations = true
+    for (const fileName of fileNames) {
+      const configuredSourceFile = await configuredProject?.program.getSourceFile(fileName)
+      const project = configuredSourceFile
+        ? configuredProject
+        : await snapshot.getDefaultProjectForFile(fileName)
+      const sourceFile = configuredSourceFile
+        ?? await project?.program.getSourceFile(fileName)
 
-      for (const statement of node.body.statements) {
-        if (ts.isVariableStatement(statement)) {
-          for (const declaration of statement.declarationList.declarations) {
-            const property = readParameterPropertyDeclaration(
-              declaration,
-              parameters,
-              checker,
-            )
+      if (!sourceFile || !project)
+        continue
 
-            if (property) {
-              if (!leadingDeclarations) {
-                diagnostics.push({
-                  ...positionOf(sourceFile, property.node),
-                  filePath,
-                  message: `${property.binding} 来自参数 ${property.parameter}，必须在函数体开头声明`,
-                  scope: readFunctionScope(node),
-                })
+      const checker = project.checker
+      const filePath = sourceByFileName.get(fileName)?.filePath
+        ?? path.relative(root, fileName).split(path.sep).join('/')
+      const functions: ts.FunctionLikeDeclaration[] = []
+
+      /** 检查单个函数体的首部参数属性声明区 */
+      const inspect = async (node: ts.FunctionLikeDeclaration) => {
+        if (!node.body || !ts.isBlock(node.body))
+          return
+
+        const parameters = new Map(node.parameters.flatMap(parameter => (
+          ts.isIdentifier(parameter.name)
+            ? [[parameter.name.text, parameter] as const]
+            : []
+        )))
+        const parameterNames = new Set(parameters.keys())
+
+        if (parameterNames.size === 0)
+          return
+
+        let leadingDeclarations = true
+
+        for (const statement of node.body.statements) {
+          if (ts.isVariableStatement(statement)) {
+            for (const declaration of statement.declarationList.declarations) {
+              const property = await readParameterPropertyDeclaration(
+                declaration,
+                parameters,
+                checker,
+              )
+
+              if (property) {
+                if (!leadingDeclarations) {
+                  diagnostics.push({
+                    ...positionOf(sourceFile, property.node),
+                    filePath,
+                    message: `${property.binding} 来自参数 ${property.parameter}，必须在函数体开头声明`,
+                    scope: readFunctionScope(node),
+                  })
+                }
+
+                continue
               }
 
-              continue
+              if (!isParameterSetupDeclaration(declaration, parameterNames))
+                leadingDeclarations = false
             }
 
-            if (!isParameterSetupDeclaration(declaration, parameterNames))
-              leadingDeclarations = false
+            continue
           }
 
-          continue
+          if (!isOrderNeutralStatement(statement))
+            leadingDeclarations = false
         }
-
-        if (!isOrderNeutralStatement(statement))
-          leadingDeclarations = false
       }
+
+      /** 收集全部具有实现体的函数 */
+      const visit = (node: ts.Node) => {
+        if (isImplementedFunction(node))
+          functions.push(node)
+
+        node.forEachChild(visit)
+      }
+
+      visit(sourceFile)
+
+      for (const node of functions)
+        await inspect(node)
     }
-
-    /** 遍历全部具有实现体的函数 */
-    const visit = (node: ts.Node) => {
-      if (isImplementedFunction(node))
-        inspect(node)
-
-      node.forEachChild(visit)
-    }
-
-    visit(sourceFile)
+  }
+  finally {
+    if (snapshot)
+      await snapshot.dispose()
+    await api.close()
   }
 
   return diagnostics.sort(comparePositionedDiagnostics)
@@ -380,10 +333,10 @@ export function formatParameterPropertyOrderDiagnostics(
 /**
  * 断言参数属性局部声明均位于函数体开头
  */
-export function assertParameterPropertyOrder(
+export async function assertParameterPropertyOrder(
   sources: readonly TypeScriptSource[],
 ) {
-  const diagnostics = readParameterPropertyOrderDiagnostics(sources)
+  const diagnostics = await readParameterPropertyOrderDiagnostics(sources)
 
   if (diagnostics.length > 0)
     throw new Error(formatParameterPropertyOrderDiagnostics(diagnostics))

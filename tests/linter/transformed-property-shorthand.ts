@@ -1,7 +1,7 @@
 import type { TypeScriptSource } from './source'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import * as ts from 'typescript'
+import * as ts from '@typescript/native/unstable/ast'
 import { isImplementedFunction, unwrapExpression } from './ast'
 import {
   comparePositionedDiagnostics,
@@ -77,12 +77,12 @@ export function readTransformedPropertyShorthandSources() {
 /**
  * 检查对象字段是否内联转换同名来源
  */
-export function readTransformedPropertyShorthandDiagnostics(
+export async function readTransformedPropertyShorthandDiagnostics(
   sources: readonly TypeScriptSource[],
 ) {
   const diagnostics: TransformedPropertyShorthandDiagnostic[] = []
 
-  for (const { filePath, sourceFile } of parseTypeScriptSources(sources)) {
+  for (const { filePath, sourceFile } of await parseTypeScriptSources(sources)) {
     /** 检查单个对象字段是否内联转换同名解构来源 */
     const inspect = (node: ts.PropertyAssignment) => {
       const property = readPropertyName(node.name)
@@ -192,11 +192,11 @@ export function formatTransformedPropertyShorthandDiagnostics(
 /**
  * 以非强制 warning 报告对象字段转换建议
  */
-export function warnTransformedPropertyShorthand(
+export async function warnTransformedPropertyShorthand(
   sources: readonly TypeScriptSource[],
   warn: (message: string) => void = console.warn,
 ) {
-  const diagnostics = readTransformedPropertyShorthandDiagnostics(sources)
+  const diagnostics = await readTransformedPropertyShorthandDiagnostics(sources)
 
   if (diagnostics.length > 0)
     warn(formatTransformedPropertyShorthandDiagnostics(diagnostics))
@@ -348,6 +348,7 @@ function hasDestructuredBinding(
     if (
       ts.isBindingElement(node)
       && ts.isObjectBindingPattern(node.parent)
+      && node.name
       && ts.isIdentifier(node.name)
       && node.name.text === name
     ) {

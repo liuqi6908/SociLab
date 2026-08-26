@@ -3,8 +3,8 @@ import { readJsxReturnLayoutDiagnostics } from './jsx-return-layout'
 
 /** -------------------- 测试 -------------------- */
 describe('jsx return 布局守卫', () => {
-  it('报告可收成单行的括号换行 JSX return', () => {
-    expect(readJsxReturnLayoutDiagnostics([{
+  it('报告可收成单行的括号换行 JSX return', async () => {
+    expect(await readJsxReturnLayoutDiagnostics([{
       filePath: 'fixtures/invalid.tsx',
       source: [
         'export function Invalid() {',
@@ -23,10 +23,10 @@ describe('jsx return 布局守卫', () => {
     ])
   })
 
-  it('接受单行、超长及 JSX 本身跨行的 return', () => {
+  it('接受单行、超长及 JSX 本身跨行的 return', async () => {
     const longInlineJsx = `<Box text="${'x'.repeat(97)}" />`
 
-    expect(readJsxReturnLayoutDiagnostics([{
+    expect(await readJsxReturnLayoutDiagnostics([{
       filePath: 'fixtures/valid.tsx',
       source: [
         'export function Valid() {',
@@ -50,10 +50,10 @@ describe('jsx return 布局守卫', () => {
     }])).toEqual([])
   })
 
-  it('只报告折叠后恰好 120 字符的多行 return', () => {
+  it('只报告折叠后恰好 120 字符的多行 return', async () => {
     const boundaryJsx = `<Box text="${'x'.repeat(96)}" />`
 
-    expect(readJsxReturnLayoutDiagnostics([{
+    expect(await readJsxReturnLayoutDiagnostics([{
       filePath: 'fixtures/boundary.tsx',
       source: [
         'export function Boundary() {',

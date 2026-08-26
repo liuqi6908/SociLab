@@ -18,9 +18,10 @@ describe('shared ui', () => {
       .toBe('py-1 px-4 block')
   })
 
-  it('通过工具和样式子路径公开能力并保留 CSS 副作用', () => {
+  it('通过组件、工具和样式子路径公开能力并保留 CSS 副作用', () => {
     expect(typeof cn).toBe('function')
     expect(packageJson.exports).toEqual({
+      './components/logo': './src/components/logo/index.tsx',
       './styles.css': './src/styles/index.css',
       './utils': './src/utils/index.ts',
     })

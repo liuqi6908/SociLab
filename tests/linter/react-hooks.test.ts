@@ -123,6 +123,8 @@ it('hook 顺序检查器按源码位置排列同一声明项并保持最高阶�
 
 it('react Hook 源码枚举只覆盖 SociLab React 专属 roots', () => {
   expect(readReactHookSources().map(item => item.filePath)).toEqual([
+    'packages/shared-ui/src/components/logo/index.tsx',
+    'packages/shared-ui/src/components/logo/props.ts',
     'packages/shared-ui/src/utils/cn.ts',
     'packages/shared-ui/src/utils/index.ts',
     'projects/admin/src/app/index.tsx',

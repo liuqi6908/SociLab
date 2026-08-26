@@ -6,6 +6,7 @@
     "**/*.css"
   ],
   "exports": {
+    "./components/logo": "./src/components/logo/index.tsx",
     "./styles.css": "./src/styles/index.css",
     "./utils": "./src/utils/index.ts"
   },
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "react": "^19.2.8",
     "tailwind-merge": "^3.6.0"
   }
 }

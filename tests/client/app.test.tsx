@@ -59,6 +59,21 @@ afterAll(() => {
 })
 
 describe('client web shell', () => {
+  it('显示共享平台标识', async () => {
+    const pending = Promise.withResolvers<Response>()
+    const view = renderApp({
+      baseUrl: 'https://client.example.test',
+      fetch: () => pending.promise,
+    })
+
+    const region = await screen.findByRole('region', { name: '服务连接状态' })
+    const logo = region.querySelector('img[aria-hidden="true"]')
+
+    expect(logo).toBeInTheDocument()
+    expect(logo).toHaveAttribute('src', expect.stringContaining('logo.png'))
+    expect(view.container.querySelectorAll('img')).toHaveLength(1)
+  })
+
   it('通过真实根路由显示客户端名称', async () => {
     const pending = Promise.withResolvers<Response>()
 

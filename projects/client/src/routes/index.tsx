@@ -1,3 +1,4 @@
+import { Logo } from '@socilab/shared-ui/components/logo'
 import { cn } from '@socilab/shared-ui/utils'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
@@ -20,7 +21,10 @@ function IndexRoute() {
       )}
     >
       <section aria-label="服务连接状态" className="w-full max-w-xl bg-surface px-8 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight">SociLab 客户端</h1>
+        <div className="flex items-center gap-4">
+          <Logo className="size-16" />
+          <h1 className="text-3xl font-semibold tracking-tight">SociLab 客户端</h1>
+        </div>
         {info.isPending && <p className="mt-4 text-sm" role="status">正在连接服务</p>}
         {info.isError && <p className="mt-4 text-sm text-primary" role="alert">连接失败</p>}
         {info.isSuccess && (

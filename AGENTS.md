@@ -349,7 +349,17 @@ export function startServer() {}
 
 ## 测试与质量门禁
 
-- 实现行为变更先写能失败的测试，再写最小实现使其通过；配置和纯文档修改使用可观察命令验证，不制造无意义的运行时 RED
+- 新增或修改测试前先明确它要阻止的具体生产回归；无法说明对应的行为、公共契约、失败路径、
+  安全边界或已确认缺陷时，不新增永久测试
+- 业务逻辑分支、状态转换、错误边界、公共契约和缺陷修复先写能失败的测试，再写最小实现使其通过
+- 静态资源替换、纯文案、样式微调、无逻辑组件组合和配置接线优先使用构建、类型检查或
+  其他可观察命令验证，不为每个需求机械新增测试
+- 除非文件路径、DOM 数量、CSS 类名、源码文本或内部目录本身是明确的稳定契约或高风险
+  回归点，否则不以这些实现细节作为永久测试的唯一断言
+- 同一共享事实只在真实所有者领域验证一次，不在 Client、Admin 等消费端重复断言；两个应用
+  各自独立的运行行为仍分别测试
+- 修改已有能力时按真实契约更新所属测试，不遵循“一项需求对应一条测试”；发现只保护实现
+  细节、与其他用例重复且没有独立回归价值的测试时应删除
 - 测试按被测领域归入 `tests/<domain>/`，不按 unit/integration 平铺分类；`tests/` 根目录不得直接放 `*.test.ts` 或 `*.test.tsx`
 - 领域测试不得相对导入其他领域测试；跨领域夹具放 `tests/support/`，只服务单一领域的 helper 留在当前领域
 - 单个 `*.test.ts` 或 `*.test.tsx` 不得超过 2000 行；超出时按行为与生命周期边界拆分并提取领域 support
@@ -357,10 +367,14 @@ export function startServer() {}
 - 测试需要隔离用户或工作区路径时显式注入临时根目录，不修改 `HOME`；其他环境变量改动保存原值并在 `finally` 中恢复
 - 根 `pnpm test` 运行全部 Vitest；单一领域修改优先执行 `pnpm exec vitest run tests/<domain>`，再按影响范围决定完整验证
 - `pnpm test:linter` 验证显式出口、接口注释、模块目录、私有成员、React 组件、Hook 顺序、className 和测试目录守卫
+- 修改自定义 linter 时先运行对应测试文件，完成后再执行 `pnpm test:linter`；普通功能改动和创建 commit
+  不额外执行 `pnpm test:linter`，除非用户明确要求
 - 生产源码不通过 default export、星号导出、深层路径或缺少命名出口绕过质量守卫；接口及其成员职责注释必须完整
 - 生成的 `projects/client/src/routeTree.gen.ts` 与 `projects/admin/src/routeTree.gen.ts` 不手工编辑，并继续排除于格式化、拼写检查、ESLint 和自定义质量守卫
 - 新增或调整文件路由只修改 `src/routes` 下的源文件，通过开发或构建命令重新生成路由树，再核对生成 diff
 - 日常开发只对本轮修改文件执行不带 `--fix` 的 ESLint 和相关测试；准备提交前按公共类型、包出口和调用链影响决定是否运行 `pnpm typecheck`
+- 创建普通 commit 前不额外重复执行 ESLint 或全仓检查；提交阶段由 `.husky/pre-commit` 对已暂存的
+  JavaScript / TypeScript 文件执行 `eslint --cache --fix`
 - 只有准备推送、合并、创建 PR 或用户明确要求时才额外执行全仓 `pnpm lint`、`pnpm typecheck`、`pnpm test`
 - 文档-only 修改不需要运行 `pnpm lint` 或 `pnpm typecheck`，但必须执行 `pnpm spellcheck` 和 `git diff --check`
 - 修改源码后检查本次变更文件的行长：超过 90 字符就考虑换行，超过 120 字符除非拆分明显降低可读性，否则必须调整；import 行不在此限制内

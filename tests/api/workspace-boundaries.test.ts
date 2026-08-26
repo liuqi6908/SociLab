@@ -11,8 +11,6 @@ interface PackageManifest {
   name: string
   /** 生产依赖 */
   dependencies?: Record<string, string>
-  /** 公开出口 */
-  exports?: Record<string, unknown>
 }
 
 interface WorkspacePackage {
@@ -126,16 +124,6 @@ describe('workspace package boundaries', () => {
       rmSync(deepImportRoot, { force: true, recursive: true })
       rmSync(relativeImportRoot, { force: true, recursive: true })
     }
-  })
-
-  it('shared-ui declares its public utility and style exports', () => {
-    const sharedUi = readWorkspaces(rootDir)
-      .find(workspace => workspace.manifest.name === '@socilab/shared-ui')
-
-    expect(sharedUi?.manifest.exports).toMatchObject({
-      './styles.css': './src/styles/index.css',
-      './utils': './src/utils/index.ts',
-    })
   })
 })
 

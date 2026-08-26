@@ -8,7 +8,6 @@ const packageJson = JSON.parse(readFileSync(
   'utf8',
 )) as {
   exports: Record<string, unknown>
-  scripts?: Record<string, string>
   sideEffects?: string[]
 }
 
@@ -26,9 +25,5 @@ describe('shared ui', () => {
       './utils': './src/utils/index.ts',
     })
     expect(packageJson.sideEffects).toContain('**/*.css')
-  })
-
-  it('提供只运行 shared-ui 测试的 workspace 脚本', () => {
-    expect(packageJson.scripts?.test).toBe('vitest --root ../.. run tests/shared-ui')
   })
 })

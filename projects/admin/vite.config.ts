@@ -1,6 +1,5 @@
 import type { PluginOption, UserConfig } from 'vite'
 import process from 'node:process'
-import { fileURLToPath, URL } from 'node:url'
 import babel from '@rolldown/plugin-babel'
 import { loadWebEnvironment } from '@socilab/shared/node'
 import tailwindcss from '@tailwindcss/vite'
@@ -10,7 +9,7 @@ import { defineConfig, loadEnv } from 'vite'
 
 /** -------------------- 常量 -------------------- */
 /** Admin workspace 目录 */
-const projectRoot = fileURLToPath(new URL('.', import.meta.url))
+const projectRoot = process.cwd()
 
 /** -------------------- 核心函数 -------------------- */
 /**

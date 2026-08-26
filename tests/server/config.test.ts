@@ -1,3 +1,6 @@
+// cspell:words aliyuncs
+import { readFileSync } from 'node:fs'
+import { parseEnv } from 'node:util'
 import { describe, expect, it } from 'vitest'
 import { loadServerConfig } from '../../projects/server/src/infra/config'
 
@@ -11,6 +14,27 @@ describe('server environment config', () => {
       redis: undefined,
       server: {
         corsOrigins: [],
+        host: '127.0.0.1',
+        port: 4317,
+      },
+      sms: undefined,
+    })
+  })
+
+  it('复制服务端环境示例时不会误启用未来服务', () => {
+    const source = readFileSync(
+      new URL('../../projects/server/.env.example', import.meta.url),
+      'utf8',
+    )
+
+    expect(loadServerConfig(parseEnv(source))).toEqual({
+      captcha: undefined,
+      database: undefined,
+      email: undefined,
+      oss: undefined,
+      redis: undefined,
+      server: {
+        corsOrigins: ['http://localhost:4318', 'http://localhost:4319'],
         host: '127.0.0.1',
         port: 4317,
       },
